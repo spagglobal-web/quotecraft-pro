@@ -14,7 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          mobile: string | null
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      purifier_models: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          features: string[]
+          gst_percentage: number
+          id: string
+          image_url: string | null
+          model_name: string
+          price: number
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          features?: string[]
+          gst_percentage?: number
+          id?: string
+          image_url?: string | null
+          model_name: string
+          price?: number
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          features?: string[]
+          gst_percentage?: number
+          id?: string
+          image_url?: string | null
+          model_name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      quotation_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: string[]
+          id: string
+          image_url: string | null
+          item_name: string
+          model_id: string | null
+          position: number
+          quantity: number
+          quotation_id: string
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          image_url?: string | null
+          item_name: string
+          model_id?: string | null
+          position?: number
+          quantity?: number
+          quotation_id: string
+          total_price?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          image_url?: string | null
+          item_name?: string
+          model_id?: string | null
+          position?: number
+          quantity?: number
+          quotation_id?: string
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "purifier_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["discount_type"]
+          discount_value: number
+          gst_amount: number
+          gst_enabled: boolean
+          gst_percentage: number
+          id: string
+          notes: string | null
+          quotation_number: string
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          terms: string | null
+          total_amount: number
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          discount_amount?: number
+          discount_type?: Database["public"]["Enums"]["discount_type"]
+          discount_value?: number
+          gst_amount?: number
+          gst_enabled?: boolean
+          gst_percentage?: number
+          id?: string
+          notes?: string | null
+          quotation_number: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          validity_days?: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          discount_amount?: number
+          discount_type?: Database["public"]["Enums"]["discount_type"]
+          discount_value?: number
+          gst_amount?: number
+          gst_enabled?: boolean
+          gst_percentage?: number
+          id?: string
+          notes?: string | null
+          quotation_number?: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +216,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      discount_type: "percentage" | "fixed"
+      quotation_status: "draft" | "sent" | "approved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +344,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      discount_type: ["percentage", "fixed"],
+      quotation_status: ["draft", "sent", "approved"],
+    },
   },
 } as const
