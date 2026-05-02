@@ -11,8 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppProductsRouteImport } from './routes/_app.products'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppQuotationsIndexRouteImport } from './routes/_app.quotations.index'
+import { Route as AppQuotationsNewRouteImport } from './routes/_app.quotations.new'
+import { Route as AppQuotationsIdRouteImport } from './routes/_app.quotations.$id'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -22,6 +26,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProductsRoute = AppProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
@@ -33,15 +47,33 @@ const AppQuotationsIndexRoute = AppQuotationsIndexRouteImport.update({
   path: '/quotations/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppQuotationsNewRoute = AppQuotationsNewRouteImport.update({
+  id: '/quotations/new',
+  path: '/quotations/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuotationsIdRoute = AppQuotationsIdRouteImport.update({
+  id: '/quotations/$id',
+  path: '/quotations/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AppDashboardRoute
+  '/products': typeof AppProductsRoute
+  '/settings': typeof AppSettingsRoute
+  '/quotations/$id': typeof AppQuotationsIdRoute
+  '/quotations/new': typeof AppQuotationsNewRoute
   '/quotations/': typeof AppQuotationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AppDashboardRoute
+  '/products': typeof AppProductsRoute
+  '/settings': typeof AppSettingsRoute
+  '/quotations/$id': typeof AppQuotationsIdRoute
+  '/quotations/new': typeof AppQuotationsNewRoute
   '/quotations': typeof AppQuotationsIndexRoute
 }
 export interface FileRoutesById {
@@ -49,14 +81,41 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/products': typeof AppProductsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/quotations/$id': typeof AppQuotationsIdRoute
+  '/_app/quotations/new': typeof AppQuotationsNewRoute
   '/_app/quotations/': typeof AppQuotationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/quotations/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/products'
+    | '/settings'
+    | '/quotations/$id'
+    | '/quotations/new'
+    | '/quotations/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/quotations'
-  id: '__root__' | '/' | '/_app' | '/_app/dashboard' | '/_app/quotations/'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/products'
+    | '/settings'
+    | '/quotations/$id'
+    | '/quotations/new'
+    | '/quotations'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_app/dashboard'
+    | '/_app/products'
+    | '/_app/settings'
+    | '/_app/quotations/$id'
+    | '/_app/quotations/new'
+    | '/_app/quotations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -80,6 +139,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/products': {
+      id: '/_app/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -94,16 +167,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuotationsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/quotations/new': {
+      id: '/_app/quotations/new'
+      path: '/quotations/new'
+      fullPath: '/quotations/new'
+      preLoaderRoute: typeof AppQuotationsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/quotations/$id': {
+      id: '/_app/quotations/$id'
+      path: '/quotations/$id'
+      fullPath: '/quotations/$id'
+      preLoaderRoute: typeof AppQuotationsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
+  AppProductsRoute: typeof AppProductsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppQuotationsIdRoute: typeof AppQuotationsIdRoute
+  AppQuotationsNewRoute: typeof AppQuotationsNewRoute
   AppQuotationsIndexRoute: typeof AppQuotationsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
+  AppProductsRoute: AppProductsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppQuotationsIdRoute: AppQuotationsIdRoute,
+  AppQuotationsNewRoute: AppQuotationsNewRoute,
   AppQuotationsIndexRoute: AppQuotationsIndexRoute,
 }
 
