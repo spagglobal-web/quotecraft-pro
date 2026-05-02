@@ -135,7 +135,7 @@ function NewQuotation() {
           status,
           validity_days: validityDays,
           notes, terms,
-        }])
+        }] as any)
         .select()
         .single();
       if (qErr) throw qErr;

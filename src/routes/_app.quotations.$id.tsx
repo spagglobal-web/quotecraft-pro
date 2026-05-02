@@ -35,7 +35,10 @@ function ViewQuotation() {
   validUntil.setDate(validUntil.getDate() + (quotation.validity_days ?? 7));
 
   async function setStatus(s: string) {
-    const { error } = await supabase.from("quotations").update({ status: s }).eq("id", quotation.id);
+    const { error } = await supabase
+      .from("quotations")
+      .update({ status: s as "draft" | "sent" | "approved" })
+      .eq("id", quotation.id);
     if (error) return toast.error(error.message);
     toast.success(`Marked as ${s}`);
     navigate({ to: "/quotations/$id", params: { id: quotation.id } });
@@ -44,7 +47,7 @@ function ViewQuotation() {
   async function duplicate() {
     const { data: nq, error } = await supabase
       .from("quotations")
-      .insert({
+      .insert([{
         customer_id: quotation.customer_id,
         subtotal: quotation.subtotal,
         gst_amount: quotation.gst_amount,
@@ -58,7 +61,7 @@ function ViewQuotation() {
         validity_days: quotation.validity_days,
         notes: quotation.notes,
         terms: quotation.terms,
-      })
+      }] as any)
       .select()
       .single();
     if (error || !nq) return toast.error(error?.message ?? "Failed");
