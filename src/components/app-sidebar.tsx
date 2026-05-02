@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Quotations", url: "/quotations", icon: FileText },
   { title: "New Quotation", url: "/quotations/new", icon: Plus },
   { title: "Products", url: "/products", icon: Package },
@@ -24,7 +24,7 @@ const items = [
 
 export function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isActive = (url: string) => (url === "/" ? path === "/" : path.startsWith(url));
+  const isActive = (url: string) => path === url || path.startsWith(url + "/");
 
   return (
     <Sidebar collapsible="icon">
