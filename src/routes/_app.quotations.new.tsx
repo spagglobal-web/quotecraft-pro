@@ -115,14 +115,14 @@ function NewQuotation() {
     try {
       const { data: cust, error: cErr } = await supabase
         .from("customers")
-        .insert({ name, mobile, email, address })
+        .insert([{ name, mobile, email, address }])
         .select()
         .single();
       if (cErr) throw cErr;
 
       const { data: quote, error: qErr } = await supabase
         .from("quotations")
-        .insert({
+        .insert([{
           customer_id: cust.id,
           subtotal: pricing.subtotal,
           gst_amount: pricing.gstAmount,
