@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,35 +8,29 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/pricing";
 import { Eye, Plus, Search } from "lucide-react";
 
-export const Route = createFileRoute("/_app/quotations/")({
-  loader: async () => {
-    const { data } = await supabase
-      .from("quotations")
-      .select("id, quotation_number, total_amount, status, created_at, customer_id, customers(name, mobile)")
-      .order("created_at", { ascending: false });
-    return { quotations: data ?? [] };
-  },
-  component: QuotationList,
-});
-
 function statColor(s: string) {
   if (s === "approved") return "bg-success text-success-foreground";
   if (s === "sent") return "bg-primary text-primary-foreground";
   return "bg-muted text-muted-foreground";
 }
 
-function QuotationList() {
-  const { quotations } = Route.useLoaderData();
+export default function QuotationsList() {
+  const [quotations, setQuotations] = useState<any[]>([]);
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("quotations")
+        .select("id, quotation_number, total_amount, status, created_at, customer_id, customers(name, mobile)")
+        .order("created_at", { ascending: false });
+      setQuotations(data ?? []);
+    })();
+  }, []);
 
   const filtered = quotations.filter((x: any) => {
     const s = q.toLowerCase();
-    return (
-      !s ||
-      x.quotation_number?.toLowerCase().includes(s) ||
-      x.customers?.name?.toLowerCase().includes(s) ||
-      x.customers?.mobile?.toLowerCase().includes(s)
-    );
+    return !s || x.quotation_number?.toLowerCase().includes(s) || x.customers?.name?.toLowerCase().includes(s) || x.customers?.mobile?.toLowerCase().includes(s);
   });
 
   return (
@@ -46,9 +40,7 @@ function QuotationList() {
           <h1 className="text-3xl font-bold tracking-tight">Quotations</h1>
           <p className="text-sm text-muted-foreground">All quotations issued from your account.</p>
         </div>
-        <Button asChild>
-          <Link to="/quotations/new"><Plus className="mr-2 h-4 w-4" /> New Quotation</Link>
-        </Button>
+        <Button asChild><Link to="/quotations/new"><Plus className="mr-2 h-4 w-4" /> New Quotation</Link></Button>
       </div>
 
       <Card>
@@ -83,17 +75,11 @@ function QuotationList() {
                         <div className="font-medium">{q.customers?.name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">{q.customers?.mobile}</div>
                       </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {new Date(q.created_at).toLocaleDateString("en-IN")}
-                      </td>
-                      <td className="px-6 py-3">
-                        <Badge className={statColor(q.status)} variant="secondary">{q.status}</Badge>
-                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">{new Date(q.created_at).toLocaleDateString("en-IN")}</td>
+                      <td className="px-6 py-3"><Badge className={statColor(q.status)} variant="secondary">{q.status}</Badge></td>
                       <td className="px-6 py-3 text-right font-mono font-semibold">{formatINR(Number(q.total_amount))}</td>
                       <td className="px-6 py-3 text-right">
-                        <Button asChild size="sm" variant="ghost">
-                          <Link to="/quotations/$id" params={{ id: q.id }}><Eye className="h-4 w-4" /></Link>
-                        </Button>
+                        <Button asChild size="sm" variant="ghost"><Link to={`/quotations/${q.id}`}><Eye className="h-4 w-4" /></Link></Button>
                       </td>
                     </tr>
                   ))}

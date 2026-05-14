@@ -1,12 +1,8 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
-export const Route = createFileRoute("/_app")({
-  component: AppLayout,
-});
-
-function AppLayout() {
+export default function AppLayout() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-gradient-to-b from-background to-muted/40">

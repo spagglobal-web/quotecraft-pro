@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,35 +8,29 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/pricing";
 import { Eye, Plus, Search } from "lucide-react";
 
-export const Route = createFileRoute("/_app/bills/")({
-  loader: async () => {
-    const { data } = await supabase
-      .from("bills")
-      .select("id, bill_number, total_amount, status, created_at, customer_id, customers(name, mobile)")
-      .order("created_at", { ascending: false });
-    return { bills: data ?? [] };
-  },
-  component: BillsList,
-});
-
 function statColor(s: string) {
   if (s === "paid") return "bg-success text-success-foreground";
   if (s === "issued") return "bg-primary text-primary-foreground";
   return "bg-muted text-muted-foreground";
 }
 
-function BillsList() {
-  const { bills } = Route.useLoaderData();
+export default function BillsList() {
+  const [bills, setBills] = useState<any[]>([]);
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("bills")
+        .select("id, bill_number, total_amount, status, created_at, customer_id, customers(name, mobile)")
+        .order("created_at", { ascending: false });
+      setBills(data ?? []);
+    })();
+  }, []);
 
   const filtered = bills.filter((x: any) => {
     const s = q.toLowerCase();
-    return (
-      !s ||
-      x.bill_number?.toLowerCase().includes(s) ||
-      x.customers?.name?.toLowerCase().includes(s) ||
-      x.customers?.mobile?.toLowerCase().includes(s)
-    );
+    return !s || x.bill_number?.toLowerCase().includes(s) || x.customers?.name?.toLowerCase().includes(s) || x.customers?.mobile?.toLowerCase().includes(s);
   });
 
   return (
@@ -46,9 +40,7 @@ function BillsList() {
           <h1 className="text-3xl font-bold tracking-tight">Bills</h1>
           <p className="text-sm text-muted-foreground">All bills issued from your account.</p>
         </div>
-        <Button asChild>
-          <Link to="/bills/new"><Plus className="mr-2 h-4 w-4" /> New Bill</Link>
-        </Button>
+        <Button asChild><Link to="/bills/new"><Plus className="mr-2 h-4 w-4" /> New Bill</Link></Button>
       </div>
 
       <Card>
@@ -83,17 +75,11 @@ function BillsList() {
                         <div className="font-medium">{b.customers?.name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">{b.customers?.mobile}</div>
                       </td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {new Date(b.created_at).toLocaleDateString("en-IN")}
-                      </td>
-                      <td className="px-6 py-3">
-                        <Badge className={statColor(b.status)} variant="secondary">{b.status}</Badge>
-                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">{new Date(b.created_at).toLocaleDateString("en-IN")}</td>
+                      <td className="px-6 py-3"><Badge className={statColor(b.status)} variant="secondary">{b.status}</Badge></td>
                       <td className="px-6 py-3 text-right font-mono font-semibold">{formatINR(Number(b.total_amount))}</td>
                       <td className="px-6 py-3 text-right">
-                        <Button asChild size="sm" variant="ghost">
-                          <Link to="/bills/$id" params={{ id: b.id }}><Eye className="h-4 w-4" /></Link>
-                        </Button>
+                        <Button asChild size="sm" variant="ghost"><Link to={`/bills/${b.id}`}><Eye className="h-4 w-4" /></Link></Button>
                       </td>
                     </tr>
                   ))}

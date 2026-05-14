@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { loadCompany, saveCompany } from "@/lib/company";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/settings")({
-  component: SettingsPage,
-});
-
-function SettingsPage() {
+export default function Settings() {
   const [c, setC] = useState(loadCompany());
 
   function onLogo(file: File) {
@@ -27,7 +22,6 @@ function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Company Settings</h1>
         <p className="text-sm text-muted-foreground">These details appear on every quotation PDF.</p>
       </div>
-
       <Card>
         <CardHeader><CardTitle className="text-base">Branding</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -41,7 +35,6 @@ function SettingsPage() {
               <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, or SVG. Saved locally to your browser.</p>
             </div>
           </div>
-
           <div className="grid gap-4 md:grid-cols-2">
             <div><Label>Company Name</Label><Input value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} /></div>
             <div><Label>Tagline</Label><Input value={c.tagline} onChange={(e) => setC({ ...c, tagline: e.target.value })} /></div>

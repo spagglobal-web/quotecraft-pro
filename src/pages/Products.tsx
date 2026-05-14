@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -10,80 +9,41 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload } from "lucide-react";
 import { formatINR } from "@/lib/pricing";
 import { toast } from "sonner";
 
 type PurifierModel = Database["public"]["Tables"]["purifier_models"]["Row"];
 
-export const Route = createFileRoute("/_app/products")({
-  loader: async () => {
-    const { data } = await supabase.from("purifier_models").select("*").order("created_at", { ascending: false });
-    return { models: (data ?? []) as PurifierModel[] };
-  },
-  component: ProductsPage,
-});
-
-function ProductsPage() {
-  const { models } = Route.useLoaderData();
+export default function Products() {
+  const [models, setModels] = useState<PurifierModel[]>([]);
   const [editing, setEditing] = useState<Partial<PurifierModel> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function uploadImage(file: File) {
-    if (!file.type.startsWith("image/")) {
-      return toast.error("Please select an image file");
-    }
+  async function load() {
+    const { data } = await supabase.from("purifier_models").select("*").order("created_at", { ascending: false });
+    setModels((data ?? []) as PurifierModel[]);
+  }
+  useEffect(() => { load(); }, []);
 
+  async function uploadImage(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Please select an image file");
     setUploading(true);
     try {
-      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-      
-      // Remove special characters from filename for better compatibility
-      const cleanFileName = fileName.replace(/[^a-z0-9\-_.]/gi, "");
-      
-      const { error: uploadError } = await supabase.storage
-        .from("product_images")
-        .upload(cleanFileName, file, { upsert: true, cacheControl: "3600" });
-
-      if (uploadError) {
-        console.error("Supabase upload error:", uploadError);
-        throw new Error(uploadError.message || "Upload failed");
-      }
-
-      const { data: publicUrl } = supabase.storage
-        .from("product_images")
-        .getPublicUrl(cleanFileName);
-
-      setEditing((prev) => ({
-        ...prev,
-        image_url: publicUrl.publicUrl,
-      }));
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`.replace(/[^a-z0-9\-_.]/gi, "");
+      const { error } = await supabase.storage.from("product_images").upload(fileName, file, { upsert: true, cacheControl: "3600" });
+      if (error) throw new Error(error.message);
+      const { data: publicUrl } = supabase.storage.from("product_images").getPublicUrl(fileName);
+      setEditing((prev) => ({ ...prev, image_url: publicUrl.publicUrl }));
       setPreview(publicUrl.publicUrl);
-      toast.success("Image uploaded successfully");
-    } catch (error: any) {
-      console.error("Upload error:", error?.message || error);
-      toast.error(error?.message || "Failed to upload image. Check Supabase policies.");
+      toast.success("Image uploaded");
+    } catch (e: any) {
+      toast.error(e?.message || "Upload failed");
     } finally {
       setUploading(false);
     }
-  }
-
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      uploadImage(file);
-    }
-  }
-
-  function handlePreviewChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const url = e.target.value;
-    setEditing((prev) => ({
-      ...prev,
-      image_url: url,
-    }));
-    setPreview(url);
   }
 
   async function save() {
@@ -104,7 +64,7 @@ function ProductsPage() {
     if (error) return toast.error(error.message);
     toast.success("Saved");
     setEditing(null);
-    location.reload();
+    load();
   }
 
   async function remove(id: string) {
@@ -112,7 +72,7 @@ function ProductsPage() {
     const { error } = await supabase.from("purifier_models").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
-    location.reload();
+    load();
   }
 
   return (
@@ -122,17 +82,9 @@ function ProductsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-sm text-muted-foreground">Manage your water purifier catalog.</p>
         </div>
-        <Dialog open={!!editing} onOpenChange={(o) => {
-          if (!o) {
-            setEditing(null);
-            setPreview(null);
-          }
-        }}>
+        <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setPreview(null); } }}>
           <DialogTrigger asChild>
-            <Button onClick={() => {
-              setEditing({ active: true, gst_percentage: 18, category: "RO", features: [] });
-              setPreview(null);
-            }}>
+            <Button onClick={() => { setEditing({ active: true, gst_percentage: 18, category: "RO", features: [] }); setPreview(null); }}>
               <Plus className="mr-2 h-4 w-4" /> New Product
             </Button>
           </DialogTrigger>
@@ -148,55 +100,17 @@ function ProductsPage() {
                 <div><Label>Description</Label><Textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
                 <div>
                   <Label>Features (one per line)</Label>
-                  <Textarea
-                    value={(editing.features ?? []).join("\n")}
-                    onChange={(e) => setEditing({ ...editing, features: e.target.value.split("\n").map((f) => f.trim()).filter(Boolean) })}
-                  />
+                  <Textarea value={(editing.features ?? []).join("\n")} onChange={(e) => setEditing({ ...editing, features: e.target.value.split("\n").map((f) => f.trim()).filter(Boolean) })} />
                 </div>
                 <div className="space-y-3">
                   <Label>Product Image</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="flex-1"
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {uploading ? "Uploading..." : "Upload Photo"}
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Label htmlFor="image-url-input" className="text-xs text-muted-foreground">Or paste URL</Label>
-                    <Input
-                      id="image-url-input"
-                      value={editing.image_url ?? ""}
-                      onChange={handlePreviewChange}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  {preview && (
-                    <div className="relative max-h-40 overflow-hidden rounded-lg border border-border bg-muted p-2">
-                      <img
-                        src={preview}
-                        alt="Preview"
-                        className="max-h-36 w-auto object-contain"
-                        onError={() => {
-                          setPreview(null);
-                          toast.error("Failed to load image preview");
-                        }}
-                      />
-                    </div>
-                  )}
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-full">
+                    <Upload className="mr-2 h-4 w-4" /> {uploading ? "Uploading..." : "Upload Photo"}
+                  </Button>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} className="hidden" />
+                  <Label className="text-xs text-muted-foreground">Or paste URL</Label>
+                  <Input value={editing.image_url ?? ""} onChange={(e) => { setEditing({ ...editing, image_url: e.target.value }); setPreview(e.target.value); }} placeholder="https://..." />
+                  {preview && <div className="rounded-lg border bg-muted p-2"><img src={preview} alt="Preview" className="max-h-36 w-auto object-contain" onError={() => setPreview(null)} /></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>GST %</Label><Input type="number" value={editing.gst_percentage ?? 18} onChange={(e) => setEditing({ ...editing, gst_percentage: Number(e.target.value) })} /></div>
@@ -229,10 +143,7 @@ function ProductsPage() {
                 {m.features?.slice(0, 3).map((f, i) => <Badge key={i} variant="secondary" className="text-[10px]">{f}</Badge>)}
               </div>
               <div className="flex justify-end gap-1 pt-2">
-                <Button size="sm" variant="ghost" onClick={() => {
-                  setEditing(m);
-                  setPreview(m.image_url ?? null);
-                }}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => { setEditing(m); setPreview(m.image_url ?? null); }}><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             </CardContent>
