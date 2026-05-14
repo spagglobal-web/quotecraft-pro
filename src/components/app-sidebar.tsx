@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation } from "react-router-dom";
 import { FileText, LayoutDashboard, Package, Plus, Settings, Receipt } from "lucide-react";
 import logo from "@/assets/spag-logo.jpg";
 
@@ -25,8 +25,8 @@ const items = [
 ];
 
 export function AppSidebar() {
-  const path = useRouterState({ select: (s) => s.location.pathname });
-  const isActive = (url: string) => path === url || path.startsWith(url + "/");
+  const { pathname } = useLocation();
+  const isActive = (url: string) => pathname === url || pathname.startsWith(url + "/");
 
   return (
     <Sidebar collapsible="icon">
