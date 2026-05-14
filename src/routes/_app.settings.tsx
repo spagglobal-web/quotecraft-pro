@@ -48,6 +48,7 @@ function SettingsPage() {
             <div><Label>Phone</Label><Input value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} /></div>
             <div><Label>Email</Label><Input value={c.email} onChange={(e) => setC({ ...c, email: e.target.value })} /></div>
             <div><Label>Website</Label><Input value={c.website} onChange={(e) => setC({ ...c, website: e.target.value })} /></div>
+            <div><Label>GST Number</Label><Input value={c.gst_number} onChange={(e) => setC({ ...c, gst_number: e.target.value })} placeholder="e.g., 33AABCT1234H1Z0" /></div>
             <div className="md:col-span-2"><Label>Address</Label><Textarea rows={2} value={c.address} onChange={(e) => setC({ ...c, address: e.target.value })} /></div>
           </div>
           <Button onClick={() => { saveCompany(c); toast.success("Settings saved"); }}>Save Settings</Button>

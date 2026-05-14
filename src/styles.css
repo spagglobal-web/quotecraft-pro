@@ -135,12 +135,155 @@
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
 }
 
-/* Print-only PDF styling for quotation */
+/* Print-only PDF styling for quotation - Professional Single Page */
 @media print {
-  @page { size: A4; margin: 12mm; }
-  body { background: white !important; }
+  @page { 
+    size: A4; 
+    margin: 6mm 8mm;
+  }
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  html, body { 
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
   .no-print { display: none !important; }
   .print-only { display: block !important; }
-  .print-page { box-shadow: none !important; border: none !important; }
+  
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-height: 100vh !important;
+  }
+  
+  /* Prevent page breaks for all content */
+  .print-page > * {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Header optimization */
+  .pdf-header {
+    page-break-after: avoid !important;
+    padding: 8mm !important;
+    margin-bottom: 0.3mm !important;
+  }
+  
+  .pdf-header h1 {
+    margin: 2px 0 4px 0 !important;
+    font-size: 20px !important;
+  }
+  
+  /* Meta bar optimization */
+  .pdf-meta {
+    padding: 4mm 8mm !important;
+    margin-bottom: 0.3mm !important;
+    gap: 8mm !important;
+  }
+  
+  .pdf-meta > div {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Bill to section */
+  .pdf-billto {
+    padding: 4mm 8mm !important;
+    margin-bottom: 0.3mm !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* Items table */
+  .pdf-items {
+    padding: 3mm 4mm !important;
+    margin-bottom: 0.3mm !important;
+  }
+  
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: avoid !important;
+    font-size: 9px !important;
+  }
+  
+  thead {
+    display: table-header-group !important;
+    page-break-after: avoid !important;
+    background-color: #1a365d !important;
+    color: white !important;
+  }
+  
+  tbody tr {
+    page-break-inside: avoid !important;
+    border-bottom: 0.5px solid #e0e0e0 !important;
+  }
+  
+  th {
+    font-weight: 700 !important;
+    font-size: 8px !important;
+    letter-spacing: 0.04em !important;
+    background-color: #1a365d !important;
+    color: white !important;
+    padding: 3px 6px !important;
+  }
+  
+  td {
+    padding: 4px 6px !important;
+    border: none !important;
+  }
+  
+  .pdf-items img {
+    max-width: 12mm !important;
+    max-height: 12mm !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* Totals section */
+  .pdf-totals {
+    padding: 4mm 8mm !important;
+    margin-bottom: 0.3mm !important;
+    gap: 6mm !important;
+  }
+  
+  .pdf-totals-left {
+    font-size: 8px !important;
+  }
+  
+  .pdf-totals-right {
+    font-size: 9px !important;
+    padding: 4mm !important;
+  }
+  
+  /* Footer optimization */
+  .pdf-footer {
+    padding: 4mm 8mm !important;
+    font-size: 8px !important;
+    page-break-inside: avoid !important;
+    border-top: 1px solid #d0d0d0 !important;
+  }
+  
+  .pdf-footer > div {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Typography */
+  p { orphans: 2; widows: 2; }
+  
+  /* Link styling */
+  a {
+    color: #1a365d !important;
+  }
 }
+
 .print-only { display: none; }

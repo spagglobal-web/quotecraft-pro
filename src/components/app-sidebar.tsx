@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileText, LayoutDashboard, Package, Plus, Settings } from "lucide-react";
+import { FileText, LayoutDashboard, Package, Plus, Settings, Receipt } from "lucide-react";
 import logo from "@/assets/spag-logo.jpg";
 
 import {
@@ -18,6 +18,8 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Quotations", url: "/quotations", icon: FileText },
   { title: "New Quotation", url: "/quotations/new", icon: Plus },
+  { title: "Bills", url: "/bills", icon: Receipt },
+  { title: "New Bill", url: "/bills/new", icon: Plus },
   { title: "Products", url: "/products", icon: Package },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

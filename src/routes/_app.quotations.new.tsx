@@ -58,6 +58,7 @@ function NewQuotation() {
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
 
   // Items
   const [items, setItems] = useState<DraftItem[]>([blankItem()]);
@@ -74,6 +75,10 @@ function NewQuotation() {
   const [terms, setTerms] = useState(
     "1. Prices are valid for the period mentioned.\n2. Payment terms: 50% advance, balance on delivery.\n3. Delivery within 7 working days from PO.\n4. GST extra as applicable.",
   );
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
   const [saving, setSaving] = useState(false);
 
   const pricing = useMemo(
@@ -86,6 +91,27 @@ function NewQuotation() {
 
   const update = (key: string, patch: Partial<DraftItem>) =>
     setItems((arr) => arr.map((i) => (i.key === key ? { ...i, ...patch } : i)));
+
+  const resetForm = () => {
+    setName("");
+    setMobile("");
+    setEmail("");
+    setAddress("");
+    setGstNumber("");
+    setItems([blankItem()]);
+    setGstEnabled(true);
+    setGstPct(18);
+    setDiscountType("percentage");
+    setDiscountValue(0);
+    setValidityDays(7);
+    setNotes("Free installation included. Warranty as per manufacturer.");
+    setTerms("1. Prices are valid for the period mentioned.\n2. Payment terms: 50% advance, balance on delivery.\n3. Delivery within 7 working days from PO.\n4. GST extra as applicable.");
+    setAccountNumber("");
+    setIfscCode("");
+    setBankName("");
+    setBankBranch("");
+    toast.success("Form cleared");
+  };
 
   const pickModel = (key: string, modelId: string) => {
     if (modelId === "__custom__") {
@@ -115,7 +141,7 @@ function NewQuotation() {
     try {
       const { data: cust, error: cErr } = await supabase
         .from("customers")
-        .insert([{ name, mobile, email, address }])
+        .insert([{ name, mobile, email, address, gst_number: gstNumber || null }])
         .select()
         .single();
       if (cErr) throw cErr;
@@ -134,7 +160,12 @@ function NewQuotation() {
           total_amount: pricing.total,
           status,
           validity_days: validityDays,
+          buyer_gst_number: gstNumber || null,
           notes, terms,
+          account_number: accountNumber || null,
+          ifsc_code: ifscCode || null,
+          bank_name: bankName || null,
+          bank_branch: bankBranch || null,
         }] as any)
         .select()
         .single();
@@ -193,12 +224,16 @@ function NewQuotation() {
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="purchase@acme.com" />
             </div>
             <div className="space-y-1.5">
-              <Label>Validity (days)</Label>
-              <Input type="number" min={1} value={validityDays} onChange={(e) => setValidityDays(Number(e.target.value) || 7)} />
+              <Label>GST Number (Optional)</Label>
+              <Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} placeholder="e.g., 33AABCT1234H1Z0" />
             </div>
             <div className="space-y-1.5 md:col-span-2">
               <Label>Address</Label>
               <Textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, State, Pincode" rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Validity (days)</Label>
+              <Input type="number" min={1} value={validityDays} onChange={(e) => setValidityDays(Number(e.target.value) || 7)} />
             </div>
           </CardContent>
         </Card>
@@ -305,6 +340,44 @@ function NewQuotation() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Payment Details</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Bank Account Number</Label>
+              <Input
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="e.g., 1234567890"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>IFSC Code</Label>
+              <Input
+                value={ifscCode}
+                onChange={(e) => setIfscCode(e.target.value)}
+                placeholder="e.g., HDFC0000001"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bank Name</Label>
+              <Input
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g., HDFC Bank"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bank Branch</Label>
+              <Input
+                value={bankBranch}
+                onChange={(e) => setBankBranch(e.target.value)}
+                placeholder="e.g., Mumbai Main Branch"
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Sticky pricing sidebar */}
@@ -358,6 +431,9 @@ function NewQuotation() {
               </Button>
               <Button className="w-full" variant="outline" disabled={saving} onClick={() => save("draft")}>
                 <Save className="mr-2 h-4 w-4" /> Save as Draft
+              </Button>
+              <Button className="w-full" variant="outline" disabled={saving} onClick={resetForm}>
+                Clear Form
               </Button>
             </div>
           </CardContent>

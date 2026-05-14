@@ -15,8 +15,11 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppProductsRouteImport } from './routes/_app.products'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppQuotationsIndexRouteImport } from './routes/_app.quotations.index'
+import { Route as AppBillsIndexRouteImport } from './routes/_app.bills.index'
 import { Route as AppQuotationsNewRouteImport } from './routes/_app.quotations.new'
 import { Route as AppQuotationsIdRouteImport } from './routes/_app.quotations.$id'
+import { Route as AppBillsNewRouteImport } from './routes/_app.bills.new'
+import { Route as AppBillsIdRouteImport } from './routes/_app.bills.$id'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -47,6 +50,11 @@ const AppQuotationsIndexRoute = AppQuotationsIndexRouteImport.update({
   path: '/quotations/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillsIndexRoute = AppBillsIndexRouteImport.update({
+  id: '/bills/',
+  path: '/bills/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppQuotationsNewRoute = AppQuotationsNewRouteImport.update({
   id: '/quotations/new',
   path: '/quotations/new',
@@ -57,14 +65,27 @@ const AppQuotationsIdRoute = AppQuotationsIdRouteImport.update({
   path: '/quotations/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillsNewRoute = AppBillsNewRouteImport.update({
+  id: '/bills/new',
+  path: '/bills/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBillsIdRoute = AppBillsIdRouteImport.update({
+  id: '/bills/$id',
+  path: '/bills/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AppDashboardRoute
   '/products': typeof AppProductsRoute
   '/settings': typeof AppSettingsRoute
+  '/bills/$id': typeof AppBillsIdRoute
+  '/bills/new': typeof AppBillsNewRoute
   '/quotations/$id': typeof AppQuotationsIdRoute
   '/quotations/new': typeof AppQuotationsNewRoute
+  '/bills/': typeof AppBillsIndexRoute
   '/quotations/': typeof AppQuotationsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -72,8 +93,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/products': typeof AppProductsRoute
   '/settings': typeof AppSettingsRoute
+  '/bills/$id': typeof AppBillsIdRoute
+  '/bills/new': typeof AppBillsNewRoute
   '/quotations/$id': typeof AppQuotationsIdRoute
   '/quotations/new': typeof AppQuotationsNewRoute
+  '/bills': typeof AppBillsIndexRoute
   '/quotations': typeof AppQuotationsIndexRoute
 }
 export interface FileRoutesById {
@@ -83,8 +107,11 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/products': typeof AppProductsRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/bills/$id': typeof AppBillsIdRoute
+  '/_app/bills/new': typeof AppBillsNewRoute
   '/_app/quotations/$id': typeof AppQuotationsIdRoute
   '/_app/quotations/new': typeof AppQuotationsNewRoute
+  '/_app/bills/': typeof AppBillsIndexRoute
   '/_app/quotations/': typeof AppQuotationsIndexRoute
 }
 export interface FileRouteTypes {
@@ -94,8 +121,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/settings'
+    | '/bills/$id'
+    | '/bills/new'
     | '/quotations/$id'
     | '/quotations/new'
+    | '/bills/'
     | '/quotations/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -103,8 +133,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/settings'
+    | '/bills/$id'
+    | '/bills/new'
     | '/quotations/$id'
     | '/quotations/new'
+    | '/bills'
     | '/quotations'
   id:
     | '__root__'
@@ -113,8 +146,11 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/products'
     | '/_app/settings'
+    | '/_app/bills/$id'
+    | '/_app/bills/new'
     | '/_app/quotations/$id'
     | '/_app/quotations/new'
+    | '/_app/bills/'
     | '/_app/quotations/'
   fileRoutesById: FileRoutesById
 }
@@ -167,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuotationsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bills/': {
+      id: '/_app/bills/'
+      path: '/bills'
+      fullPath: '/bills/'
+      preLoaderRoute: typeof AppBillsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/quotations/new': {
       id: '/_app/quotations/new'
       path: '/quotations/new'
@@ -181,6 +224,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuotationsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bills/new': {
+      id: '/_app/bills/new'
+      path: '/bills/new'
+      fullPath: '/bills/new'
+      preLoaderRoute: typeof AppBillsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/bills/$id': {
+      id: '/_app/bills/$id'
+      path: '/bills/$id'
+      fullPath: '/bills/$id'
+      preLoaderRoute: typeof AppBillsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -188,8 +245,11 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppProductsRoute: typeof AppProductsRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppBillsIdRoute: typeof AppBillsIdRoute
+  AppBillsNewRoute: typeof AppBillsNewRoute
   AppQuotationsIdRoute: typeof AppQuotationsIdRoute
   AppQuotationsNewRoute: typeof AppQuotationsNewRoute
+  AppBillsIndexRoute: typeof AppBillsIndexRoute
   AppQuotationsIndexRoute: typeof AppQuotationsIndexRoute
 }
 
@@ -197,8 +257,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppProductsRoute: AppProductsRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppBillsIdRoute: AppBillsIdRoute,
+  AppBillsNewRoute: AppBillsNewRoute,
   AppQuotationsIdRoute: AppQuotationsIdRoute,
   AppQuotationsNewRoute: AppQuotationsNewRoute,
+  AppBillsIndexRoute: AppBillsIndexRoute,
   AppQuotationsIndexRoute: AppQuotationsIndexRoute,
 }
 
@@ -211,3 +274,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

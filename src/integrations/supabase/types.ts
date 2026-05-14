@@ -19,6 +19,7 @@ export type Database = {
           address: string | null
           created_at: string
           email: string | null
+          gst_number: string | null
           id: string
           mobile: string | null
           name: string
@@ -27,6 +28,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email?: string | null
+          gst_number?: string | null
           id?: string
           mobile?: string | null
           name: string
@@ -35,6 +37,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email?: string | null
+          gst_number?: string | null
           id?: string
           mobile?: string | null
           name?: string
@@ -142,6 +145,7 @@ export type Database = {
       }
       quotations: {
         Row: {
+          buyer_gst_number: string | null
           created_at: string
           customer_id: string | null
           discount_amount: number
@@ -161,6 +165,7 @@ export type Database = {
           validity_days: number
         }
         Insert: {
+          buyer_gst_number?: string | null
           created_at?: string
           customer_id?: string | null
           discount_amount?: number
@@ -180,6 +185,7 @@ export type Database = {
           validity_days?: number
         }
         Update: {
+          buyer_gst_number?: string | null
           created_at?: string
           customer_id?: string | null
           discount_amount?: number
