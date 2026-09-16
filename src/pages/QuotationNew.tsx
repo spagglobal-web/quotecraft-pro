@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ const blankItem = (): DraftItem => ({
 
 export default function QuotationNew() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [models, setModels] = useState<any[]>([]);
   useEffect(() => {
     (async () => {
@@ -37,33 +38,62 @@ export default function QuotationNew() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
+  const [customQuotationNumber, setCustomQuotationNumber] = useState("");
   const [items, setItems] = useState<DraftItem[]>([blankItem()]);
   const [gstEnabled, setGstEnabled] = useState(true);
-  const [gstPct, setGstPct] = useState(18);
+  const [cgstPct, setCgstPct] = useState(9);
+  const [sgstPct, setSgstPct] = useState(9);
   const [discountType, setDiscountType] = useState<DiscountType>("percentage");
   const [discountValue, setDiscountValue] = useState(0);
   const [validityDays, setValidityDays] = useState(7);
   const [notes, setNotes] = useState("Free installation included. Warranty as per manufacturer.");
   const [terms, setTerms] = useState("1. Prices are valid for the period mentioned.\n2. Payment terms: 50% advance, balance on delivery.\n3. Delivery within 7 working days from PO.\n4. GST extra as applicable.");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [ifscCode, setIfscCode] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankBranch, setBankBranch] = useState("");
+  const [accountNumber, setAccountNumber] = useState("45119431098");
+  const [ifscCode, setIfscCode] = useState("SBIN0001613");
+  const [bankName, setBankName] = useState("STATE BANK OF INDIA");
+  const [bankBranch, setBankBranch] = useState("ADB PONDICHERRY");
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"draft" | "sent" | "approved">("draft");
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const { data: quotation, error } = await (supabase as any).from("quotations").select("*, customers(*), quotation_items(*)").eq("id", id).single();
+      if (error || !quotation) return toast.error(error?.message ?? "Quotation not found");
+      const customer = quotation.customers ?? {};
+      setName(customer.name ?? ""); setMobile(customer.mobile ?? ""); setEmail(customer.email ?? ""); setAddress(customer.address ?? "");
+      setGstNumber(quotation.buyer_gst_number ?? customer.gst_number ?? ""); setCustomQuotationNumber(quotation.custom_quotation_number ?? "");
+      setStatus(quotation.status === "sent" || quotation.status === "approved" ? quotation.status : "draft");
+      setQuotationDate((quotation.quotation_date ?? quotation.created_at ?? "").slice(0, 10)); setValidityDays(Number(quotation.validity_days ?? 7));
+      setGstEnabled(Boolean(quotation.gst_enabled)); setCgstPct(Number(quotation.cgst_percentage ?? 9)); setSgstPct(Number(quotation.sgst_percentage ?? 9));
+      setDiscountType((quotation.discount_type ?? "percentage") as DiscountType); setDiscountValue(Number(quotation.discount_value ?? 0));
+      setNotes(quotation.notes ?? ""); setTerms(quotation.terms ?? ""); setAccountNumber(quotation.account_number ?? ""); setIfscCode(quotation.ifsc_code ?? "");
+      setBankName(quotation.bank_name ?? ""); setBankBranch(quotation.bank_branch ?? ""); setAccountHolderName(quotation.account_holder_name ?? "");
+      setItems((quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position).map((item: any) => ({
+        key: item.id ?? crypto.randomUUID(), model_id: item.model_id, item_name: item.item_name ?? "", description: item.description ?? "",
+        features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1), unit_price: Number(item.unit_price ?? 0),
+      })));
+    })();
+  }, [id]);
 
   const pricing = useMemo(() => computePricing({
     items: items.map((i) => ({ quantity: i.quantity, unit_price: i.unit_price })),
-    gstEnabled, gstPercentage: gstPct, discountType, discountValue,
-  }), [items, gstEnabled, gstPct, discountType, discountValue]);
+    gstEnabled, cgstPercentage: cgstPct, sgstPercentage: sgstPct, discountType, discountValue,
+  }), [items, gstEnabled, cgstPct, sgstPct, discountType, discountValue]);
 
   const update = (key: string, patch: Partial<DraftItem>) =>
     setItems((arr) => arr.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
   const resetForm = () => {
     setName(""); setMobile(""); setEmail(""); setAddress(""); setGstNumber("");
-    setItems([blankItem()]); setGstEnabled(true); setGstPct(18);
+    setCustomQuotationNumber("");
+    setItems([blankItem()]); setGstEnabled(true); setCgstPct(9); setSgstPct(9);
     setDiscountType("percentage"); setDiscountValue(0); setValidityDays(7);
-    setAccountNumber(""); setIfscCode(""); setBankName(""); setBankBranch("");
+    setAccountNumber("45119431098"); setIfscCode("SBIN0001613");
+    setBankName("STATE BANK OF INDIA"); setBankBranch("ADB PONDICHERRY");
+    setAccountHolderName("");
     toast.success("Form cleared");
   };
 
@@ -80,22 +110,35 @@ export default function QuotationNew() {
     });
   };
 
-  async function save(status: "draft" | "sent") {
+  async function save(nextStatus: "draft" | "sent" | "approved") {
     if (!name.trim()) return toast.error("Customer name is required");
     if (items.length === 0 || items.every((i) => !i.item_name)) return toast.error("Add at least one item");
     setSaving(true);
     try {
-      const { data: cust, error: cErr } = await supabase.from("customers").insert([{ name, mobile, email, address, gst_number: gstNumber || null }]).select().single();
-      if (cErr) throw cErr;
-      const { data: quote, error: qErr } = await supabase.from("quotations").insert([{
-        customer_id: cust.id, subtotal: pricing.subtotal, gst_amount: pricing.gstAmount,
-        gst_percentage: gstPct, gst_enabled: gstEnabled, discount_value: discountValue,
+      let customerId = id ? (await (supabase as any).from("quotations").select("customer_id").eq("id", id).single()).data?.customer_id : null;
+      if (id && customerId) {
+        const { error } = await supabase.from("customers").update({ name, mobile, email, address, gst_number: gstNumber || null }).eq("id", customerId);
+        if (error) throw error;
+      } else {
+        const { data: cust, error: cErr } = await supabase.from("customers").insert([{ name, mobile, email, address, gst_number: gstNumber || null }]).select().single();
+        if (cErr) throw cErr;
+        customerId = cust.id;
+      }
+      const payload = {
+        customer_id: customerId, subtotal: pricing.subtotal, gst_amount: pricing.gstAmount,
+        cgst_percentage: cgstPct, sgst_percentage: sgstPct, cgst_amount: pricing.cgstAmount,
+        sgst_amount: pricing.sgstAmount, gst_enabled: gstEnabled, discount_value: discountValue,
         discount_type: discountType, discount_amount: pricing.discountAmount,
-        total_amount: pricing.total, status, validity_days: validityDays,
+        total_amount: pricing.total, status: id ? status : nextStatus, validity_days: validityDays,
+        custom_quotation_number: customQuotationNumber || null, quotation_date: quotationDate || null,
         buyer_gst_number: gstNumber || null, notes, terms,
         account_number: accountNumber || null, ifsc_code: ifscCode || null,
+        account_holder_name: accountHolderName || null,
         bank_name: bankName || null, bank_branch: bankBranch || null,
-      }] as any).select().single();
+      };
+      const { data: quote, error: qErr } = id
+        ? await (supabase as any).from("quotations").update(payload).eq("id", id).select().single()
+        : await supabase.from("quotations").insert([payload] as any).select().single();
       if (qErr) throw qErr;
       const lineItems = items.filter((i) => i.item_name).map((i, idx) => ({
         quotation_id: quote.id, model_id: i.model_id, item_name: i.item_name,
@@ -103,9 +146,13 @@ export default function QuotationNew() {
         quantity: i.quantity, unit_price: i.unit_price,
         total_price: Number(i.quantity) * Number(i.unit_price), position: idx,
       }));
+      if (id) {
+        const { error } = await (supabase as any).from("quotation_items").delete().eq("quotation_id", id);
+        if (error) throw error;
+      }
       const { error: iErr } = await supabase.from("quotation_items").insert(lineItems);
       if (iErr) throw iErr;
-      toast.success(`Quotation ${quote.quotation_number} saved`);
+      toast.success(`Quotation ${quote.quotation_number} ${id ? "updated" : "saved"}`);
       navigate(`/quotations/${quote.id}`);
     } catch (e: any) {
       toast.error(e.message ?? "Failed");
@@ -116,8 +163,8 @@ export default function QuotationNew() {
     <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">New Quotation</h1>
-          <p className="text-sm text-muted-foreground">Build a polished, branded quotation with live pricing.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{id ? "Edit Quotation" : "New Quotation"}</h1>
+          <p className="text-sm text-muted-foreground">{id ? "Update every quotation detail." : "Build a polished, branded quotation with live pricing."}</p>
         </header>
         <Card>
           <CardHeader><CardTitle className="text-base">Customer</CardTitle></CardHeader>
@@ -191,23 +238,38 @@ export default function QuotationNew() {
         <Card>
           <CardHeader><CardTitle className="text-base">Payment Details</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
+            <div><Label>Account Holder Name</Label><Input value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} /></div>
             <div><Label>Account Number</Label><Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} /></div>
             <div><Label>IFSC Code</Label><Input value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} /></div>
             <div><Label>Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} /></div>
-            <div><Label>Branch</Label><Input value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} /></div>
+            <div className="md:col-span-2"><Label>Branch</Label><Input value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} /></div>
           </CardContent>
         </Card>
       </div>
 
       <div className="lg:sticky lg:top-20 lg:self-start">
         <Card className="border-2 border-primary/15 shadow-[var(--shadow-elegant)]">
-          <CardHeader><CardTitle className="text-base">Pricing Summary</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Quotation & Pricing</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-5">
+            <div>
+              <Label className="text-xs">Custom Quotation # (optional)</Label>
+              <Input value={customQuotationNumber} onChange={(e) => setCustomQuotationNumber(e.target.value)} placeholder="e.g., SPAG-Q-0001 (auto-generated if left blank)" />
+            </div>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <div className="flex items-center justify-between"><Label className="m-0">Apply GST</Label><Switch checked={gstEnabled} onCheckedChange={setGstEnabled} /></div>
               <div className={gstEnabled ? "" : "pointer-events-none opacity-50"}>
-                <Label className="text-xs">GST %</Label>
-                <Input type="number" min={0} max={100} value={gstPct} onChange={(e) => setGstPct(Number(e.target.value) || 0)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">CGST %</Label>
+                    <Input type="number" min={0} max={100} step="0.01" value={cgstPct} onChange={(e) => setCgstPct(Number(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">SGST %</Label>
+                    <Input type="number" min={0} max={100} step="0.01" value={sgstPct} onChange={(e) => setSgstPct(Number(e.target.value) || 0)} />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
@@ -223,12 +285,16 @@ export default function QuotationNew() {
             <div className="space-y-1.5 rounded-lg border bg-gradient-to-b from-background to-muted/40 p-4 font-mono text-sm">
               <Row label="Subtotal" value={formatINR(pricing.subtotal)} />
               {pricing.discountAmount > 0 && <Row label={`Discount`} value={`- ${formatINR(pricing.discountAmount)}`} />}
-              {gstEnabled && <Row label={`GST (${gstPct}%)`} value={formatINR(pricing.gstAmount)} />}
+              {gstEnabled && <>
+                <Row label={`CGST (${cgstPct}%)`} value={formatINR(pricing.cgstAmount)} />
+                <Row label={`SGST (${sgstPct}%)`} value={formatINR(pricing.sgstAmount)} />
+              </>
+              }
               <div className="my-2 h-px bg-border" />
               <div className="flex items-center justify-between text-base"><span className="font-bold">Grand Total</span><span className="font-bold text-primary">{formatINR(pricing.total)}</span></div>
             </div>
             <div className="space-y-2">
-              <Button className="w-full" size="lg" disabled={saving} onClick={() => save("sent")}><FileText className="mr-2 h-4 w-4" />{saving ? "Saving..." : "Save & Generate"}</Button>
+              <Button className="w-full" size="lg" disabled={saving} onClick={() => save("sent")}><FileText className="mr-2 h-4 w-4" />{saving ? "Saving..." : id ? "Update & Generate" : "Save & Generate"}</Button>
               <Button className="w-full" variant="outline" disabled={saving} onClick={() => save("draft")}><Save className="mr-2 h-4 w-4" /> Save as Draft</Button>
               <Button className="w-full" variant="outline" disabled={saving} onClick={resetForm}>Clear Form</Button>
             </div>

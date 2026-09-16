@@ -8,7 +8,9 @@ export interface LineItem {
 export interface PricingInput {
   items: LineItem[];
   gstEnabled: boolean;
-  gstPercentage: number;
+  gstPercentage?: number;
+  cgstPercentage?: number;
+  sgstPercentage?: number;
   discountType: DiscountType;
   discountValue: number;
 }
@@ -18,6 +20,8 @@ export interface PricingResult {
   discountAmount: number;
   taxableAmount: number;
   gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
   total: number;
 }
 
@@ -31,15 +35,33 @@ export function computePricing(input: PricingInput): PricingResult {
       ? (subtotal * (Number(input.discountValue) || 0)) / 100
       : Math.min(Number(input.discountValue) || 0, subtotal);
   const taxableAmount = Math.max(subtotal - discountAmount, 0);
-  const gstAmount = input.gstEnabled
-    ? (taxableAmount * (Number(input.gstPercentage) || 0)) / 100
-    : 0;
+
+  // Calculate CGST and SGST separately if provided, otherwise use old GST calculation
+  let cgstAmount = 0;
+  let sgstAmount = 0;
+  let gstAmount = 0;
+
+  if (input.gstEnabled) {
+    if (input.cgstPercentage !== undefined && input.sgstPercentage !== undefined) {
+      cgstAmount = (taxableAmount * (Number(input.cgstPercentage) || 0)) / 100;
+      sgstAmount = (taxableAmount * (Number(input.sgstPercentage) || 0)) / 100;
+      gstAmount = cgstAmount + sgstAmount;
+    } else {
+      // Fallback to old single GST calculation
+      gstAmount = (taxableAmount * (Number(input.gstPercentage) || 0)) / 100;
+      cgstAmount = 0;
+      sgstAmount = 0;
+    }
+  }
+
   const total = taxableAmount + gstAmount;
   return {
     subtotal: round2(subtotal),
     discountAmount: round2(discountAmount),
     taxableAmount: round2(taxableAmount),
     gstAmount: round2(gstAmount),
+    cgstAmount: round2(cgstAmount),
+    sgstAmount: round2(sgstAmount),
     total: round2(total),
   };
 }

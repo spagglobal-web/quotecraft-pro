@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/pricing";
 import { loadCompany } from "@/lib/company";
-import { ArrowLeft, Copy, Printer, Trash2, CheckCircle2, Send, FileText } from "lucide-react";
+import { ArrowLeft, Copy, Printer, Trash2, CheckCircle2, Send, FileText, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -37,12 +37,14 @@ export default function QuotationView() {
   async function duplicate() {
     const { data: nq, error } = await supabase.from("quotations").insert([{
       customer_id: quotation.customer_id, subtotal: quotation.subtotal, gst_amount: quotation.gst_amount,
-      gst_percentage: quotation.gst_percentage, gst_enabled: quotation.gst_enabled,
+      cgst_percentage: quotation.cgst_percentage, sgst_percentage: quotation.sgst_percentage,
+      cgst_amount: quotation.cgst_amount, sgst_amount: quotation.sgst_amount, gst_enabled: quotation.gst_enabled,
       discount_value: quotation.discount_value, discount_type: quotation.discount_type,
       discount_amount: quotation.discount_amount, total_amount: quotation.total_amount,
       status: "draft", validity_days: quotation.validity_days,
       buyer_gst_number: quotation.buyer_gst_number, notes: quotation.notes, terms: quotation.terms,
       account_number: quotation.account_number, ifsc_code: quotation.ifsc_code,
+      account_holder_name: quotation.account_holder_name,
       bank_name: quotation.bank_name, bank_branch: quotation.bank_branch,
     }] as any).select().single();
     if (error || !nq) return toast.error(error?.message ?? "Failed");
@@ -150,6 +152,7 @@ export default function QuotationView() {
                 <SelectItem value="approved">Approved</SelectItem>
               </SelectContent>
             </Select>
+            <button className="qv-btn-outline" onClick={() => navigate(`/quotations/${quotation.id}/edit`)}><Pencil size={15} /> Edit</button>
             <button className="qv-btn-outline" onClick={duplicate}><Copy size={15} /> Duplicate</button>
             <button className="qv-btn-primary" onClick={() => window.print()}><Printer size={15} /> Print PDF</button>
             <button className="qv-btn-danger" onClick={remove}><Trash2 size={16} /></button>
@@ -229,6 +232,7 @@ export default function QuotationView() {
               {quotation.terms && <div><div className="qv-notes-label">Terms & Conditions</div><div className="qv-notes-text">{quotation.terms}</div></div>}
               {(quotation.account_number || quotation.bank_name) && (
                 <div><div className="qv-notes-label">Bank Details</div><div className="qv-notes-text">
+                  {quotation.account_holder_name && <div>{quotation.account_holder_name}</div>}
                   {quotation.account_number && <div>Account: {quotation.account_number}</div>}
                   {quotation.ifsc_code && <div>IFSC: {quotation.ifsc_code}</div>}
                   {quotation.bank_name && <div>Bank: {quotation.bank_name}</div>}
@@ -239,7 +243,16 @@ export default function QuotationView() {
             <div className="qv-totals-box">
               <div className="qv-total-row"><span className="qv-total-label">Subtotal</span><span className="qv-total-value">{formatINR(Number(quotation.subtotal))}</span></div>
               {Number(quotation.discount_amount) > 0 && <div className="qv-total-row"><span className="qv-total-label">Discount</span><span className="qv-total-value" style={{ color: "#dc2626" }}>− {formatINR(Number(quotation.discount_amount))}</span></div>}
-              {quotation.gst_enabled && <div className="qv-total-row"><span className="qv-total-label">GST ({quotation.gst_percentage}%)</span><span className="qv-total-value">{formatINR(Number(quotation.gst_amount))}</span></div>}
+              {quotation.gst_enabled && <>
+                {quotation.cgst_amount !== undefined && quotation.sgst_amount !== undefined ? (
+                  <>
+                    <div className="qv-total-row"><span className="qv-total-label">CGST ({quotation.cgst_percentage}%)</span><span className="qv-total-value">{formatINR(Number(quotation.cgst_amount))}</span></div>
+                    <div className="qv-total-row"><span className="qv-total-label">SGST ({quotation.sgst_percentage}%)</span><span className="qv-total-value">{formatINR(Number(quotation.sgst_amount))}</span></div>
+                  </>
+                ) : (
+                  <div className="qv-total-row"><span className="qv-total-label">GST ({quotation.gst_percentage}%)</span><span className="qv-total-value">{formatINR(Number(quotation.gst_amount))}</span></div>
+                )}</>
+              }
               <div className="qv-grand-total"><div className="qv-grand-label">Grand Total</div><div className="qv-grand-value">{formatINR(Number(quotation.total_amount))}</div></div>
             </div>
           </div>

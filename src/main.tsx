@@ -34,9 +34,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="/products" element={<Products />} />
               <Route path="/quotations" element={<QuotationsList />} />
               <Route path="/quotations/new" element={<QuotationNew />} />
+              <Route path="/quotations/:id/edit" element={<QuotationNew />} />
               <Route path="/quotations/:id" element={<QuotationView />} />
               <Route path="/bills" element={<BillsList />} />
               <Route path="/bills/new" element={<BillNew />} />
+              <Route path="/bills/:id/edit" element={<BillNew />} />
               <Route path="/bills/:id" element={<BillView />} />
               <Route path="/settings" element={<Settings />} />
             </Route>

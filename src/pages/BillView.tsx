@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/pricing";
 import { loadCompany } from "@/lib/company";
-import { ArrowLeft, Copy, Printer, Trash2, CheckCircle2, Send, FileText } from "lucide-react";
+import { ArrowLeft, Copy, Printer, Trash2, CheckCircle2, Send, FileText, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -23,7 +23,7 @@ export default function BillView() {
   const bill = data;
   const items = (bill.bill_items ?? []).sort((a: any, b: any) => a.position - b.position);
   const c = bill.customers;
-  const created = new Date(bill.created_at);
+  const created = new Date(bill.bill_date || bill.created_at);
 
   async function setStatus(s: string) {
     const { error } = await (supabase as any).from("bills").update({ status: s }).eq("id", bill.id);
@@ -35,12 +35,14 @@ export default function BillView() {
   async function duplicate() {
     const { data: nb, error } = await (supabase as any).from("bills").insert([{
       customer_id: bill.customer_id, subtotal: bill.subtotal, gst_amount: bill.gst_amount,
-      gst_percentage: bill.gst_percentage, gst_enabled: bill.gst_enabled,
+      cgst_percentage: bill.cgst_percentage, sgst_percentage: bill.sgst_percentage,
+      cgst_amount: bill.cgst_amount, sgst_amount: bill.sgst_amount, gst_enabled: bill.gst_enabled,
       discount_value: bill.discount_value, discount_type: bill.discount_type,
       discount_amount: bill.discount_amount, total_amount: bill.total_amount,
       status: "draft", buyer_gst_number: bill.buyer_gst_number, notes: bill.notes,
       payment_terms: bill.payment_terms, account_number: bill.account_number,
-      ifsc_code: bill.ifsc_code, bank_name: bill.bank_name, bank_branch: bill.bank_branch,
+      ifsc_code: bill.ifsc_code, account_holder_name: bill.account_holder_name,
+      bank_name: bill.bank_name, bank_branch: bill.bank_branch, bill_date: bill.bill_date || null,
     }]).select().single();
     if (error || !nb) return toast.error(error?.message ?? "Failed");
     await (supabase as any).from("bill_items").insert(items.map((i: any) => ({
@@ -91,6 +93,7 @@ export default function BillView() {
                 <SelectItem value="paid">Paid</SelectItem>
               </SelectContent>
             </Select>
+            <button className="bv-btn" onClick={() => navigate(`/bills/${bill.id}/edit`)}><Pencil size={15} /> Edit</button>
             <button className="bv-btn" onClick={duplicate}><Copy size={15} /> Duplicate</button>
             <button className="bv-btn bv-btn-primary" onClick={() => window.print()}><Printer size={15} /> Download PDF</button>
             <button className="bv-btn bv-btn-danger" onClick={remove}><Trash2 size={16} /></button>
@@ -170,6 +173,7 @@ export default function BillView() {
                 {bill.notes && <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Notes</div><div style={{ fontSize: 11 }}>{bill.notes}</div></div>}
                 {bill.payment_terms && <div style={{ background: "#fff3cd", padding: 10, borderRadius: 4, marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, color: "#856404" }}>WARRANTY / TERMS</div><div style={{ fontSize: 11 }}>{bill.payment_terms}</div></div>}
                 {(bill.account_number || bill.bank_name) && <div><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Bank Details</div><div style={{ fontSize: 11 }}>
+                  {bill.account_holder_name && <div>{bill.account_holder_name}</div>}
                   {bill.account_number && <div>Account: {bill.account_number}</div>}
                   {bill.ifsc_code && <div>IFSC: {bill.ifsc_code}</div>}
                   {bill.bank_name && <div>Bank: {bill.bank_name}</div>}
@@ -179,7 +183,16 @@ export default function BillView() {
               <div style={{ background: "#fafafa", border: "1px solid #ddd", borderRadius: 4, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>Subtotal</span><span style={{ fontWeight: 700 }}>{formatINR(Number(bill.subtotal))}</span></div>
                 {Number(bill.discount_amount) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>Discount</span><span style={{ fontWeight: 700 }}>− {formatINR(Number(bill.discount_amount))}</span></div>}
-                {bill.gst_enabled && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>GST ({bill.gst_percentage}%)</span><span style={{ fontWeight: 700 }}>{formatINR(Number(bill.gst_amount))}</span></div>}
+                {bill.gst_enabled && <>
+                  {bill.cgst_amount !== undefined && bill.sgst_amount !== undefined ? (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>CGST ({bill.cgst_percentage}%)</span><span style={{ fontWeight: 700 }}>{formatINR(Number(bill.cgst_amount))}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>SGST ({bill.sgst_percentage}%)</span><span style={{ fontWeight: 700 }}>{formatINR(Number(bill.sgst_amount))}</span></div>
+                    </>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7, fontSize: 12 }}><span style={{ color: "#666" }}>GST ({bill.gst_percentage}%)</span><span style={{ fontWeight: 700 }}>{formatINR(Number(bill.gst_amount))}</span></div>
+                  )}</>
+                }
                 <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, borderTop: "2px solid #333", fontSize: 14, fontWeight: 700 }}><span>Total</span><span>{formatINR(Number(bill.total_amount))}</span></div>
               </div>
             </div>
