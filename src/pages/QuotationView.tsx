@@ -23,7 +23,7 @@ export default function QuotationView() {
   const quotation = data as any;
   const items = (quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position);
   const c = quotation.customers as any;
-  const created = new Date(quotation.created_at);
+  const created = new Date(quotation.quotation_date || quotation.created_at);
   const validUntil = new Date(created);
   validUntil.setDate(validUntil.getDate() + (quotation.validity_days ?? 7));
 
@@ -87,17 +87,17 @@ export default function QuotationView() {
         .qv-btn-outline { color: #1f2937; background: #f9fafb; border: 1px solid #e5e7eb; }
         .qv-btn-primary { color: white; background: #1f2937; border: 1px solid #1f2937; }
         .qv-btn-danger { color: #dc2626; background: transparent; border: 1px solid transparent; }
-        .qv-document { background: white; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .qv-header { padding: 32px 40px; border-bottom: 2px solid #e5e7eb; }
-        .qv-header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; margin-bottom: 24px; }
-        .qv-company-section { display: flex; gap: 16px; }
-        .qv-company-logo { width: 56px; height: 56px; background: #1f2937; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .qv-document { width: 210mm; max-width: 100%; min-height: 297mm; box-sizing: border-box; background: white; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .qv-header { padding: 28px 40px; border-bottom: 2px solid #e5e7eb; }
+        .qv-header-top { display: flex; justify-content: space-between; align-items: center; gap: 30px; margin-bottom: 24px; }
+        .qv-company-section { display: flex; gap: 20px; align-items: center; }
+        .qv-company-logo { width: 130px; height: 130px; background: #1f2937; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .qv-company-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .qv-company-info h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; color: #1f2937; }
         .qv-company-info p { font-size: 13px; color: #6b7280; margin: 0; line-height: 1.5; }
-        .qv-quotation-num { text-align: right; }
+        .qv-quotation-num { min-width: 220px; text-align: right; align-self: center; flex-shrink: 0; }
         .qv-quotation-num-label { font-size: 12px; font-weight: 700; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase; }
-        .qv-quotation-num-value { font-size: 32px; font-weight: 700; color: #1f2937; font-family: 'Courier New', monospace; }
+        .qv-quotation-num-value { font-size: 28px; font-weight: 700; color: #1f2937; font-family: 'Courier New', monospace; white-space: nowrap; }
         .qv-meta-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .qv-meta-label { font-size: 11px; font-weight: 700; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
         .qv-meta-value { font-size: 15px; font-weight: 600; color: #1f2937; }
@@ -115,8 +115,8 @@ export default function QuotationView() {
         .qv-table tbody tr { border-bottom: 1px solid #e5e7eb; }
         .qv-table td { padding: 16px 14px; font-size: 13px; color: #1f2937; }
         .qv-table td:nth-child(3), .qv-table td:nth-child(4), .qv-table td:nth-child(5) { text-align: right; }
-        .qv-item-cell { display: flex; gap: 12px; align-items: flex-start; }
-        .qv-item-image { width: 60px; height: 60px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+        .qv-item-cell { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+        .qv-item-image { width: 150px; height: 150px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
         .qv-item-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .qv-item-name { font-size: 13px; font-weight: 700; color: #1f2937; margin-bottom: 3px; }
         .qv-item-desc { font-size: 12px; color: #6b7280; line-height: 1.4; }
@@ -134,7 +134,9 @@ export default function QuotationView() {
         @media print {
           html, body { margin: 0; padding: 0; background: white; }
           .no-print { display: none !important; }
-          .qv-document { box-shadow: none; border: none; }
+          .qv-root { width: 210mm; max-width: none; padding: 0; }
+          .qv-document { width: 210mm; min-height: 297mm; box-shadow: none; border: none; }
+          .qv-table tr, .qv-footer { break-inside: avoid; }
         }
       `}</style>
       <div className="qv-root mx-auto max-w-5xl space-y-4 p-4">
@@ -175,7 +177,7 @@ export default function QuotationView() {
               </div>
               <div className="qv-quotation-num">
                 <div className="qv-quotation-num-label">Quotation No.</div>
-                <div className="qv-quotation-num-value">{quotation.quotation_number}</div>
+                <div className="qv-quotation-num-value">{quotation.custom_quotation_number || quotation.quotation_number}</div>
               </div>
             </div>
             <div className="qv-meta-strip">
@@ -205,7 +207,7 @@ export default function QuotationView() {
                       <td>
                         <div className="qv-item-cell">
                           {it.image_url && <div className="qv-item-image"><img src={it.image_url} alt={it.item_name} /></div>}
-                          <div>
+                          <div className="qv-item-details">
                             <div className="qv-item-name">{it.item_name}</div>
                             {it.description && <div className="qv-item-desc">{it.description}</div>}
                             {it.features?.length > 0 && (
@@ -232,7 +234,7 @@ export default function QuotationView() {
               {quotation.terms && <div><div className="qv-notes-label">Terms & Conditions</div><div className="qv-notes-text">{quotation.terms}</div></div>}
               {(quotation.account_number || quotation.bank_name) && (
                 <div><div className="qv-notes-label">Bank Details</div><div className="qv-notes-text">
-                  {quotation.account_holder_name && <div>{quotation.account_holder_name}</div>}
+                  <div>{quotation.account_holder_name || "SPAG EAGLE GLOBAL PRIVATE LIMITED"}</div>
                   {quotation.account_number && <div>Account: {quotation.account_number}</div>}
                   {quotation.ifsc_code && <div>IFSC: {quotation.ifsc_code}</div>}
                   {quotation.bank_name && <div>Bank: {quotation.bank_name}</div>}

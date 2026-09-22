@@ -72,11 +72,22 @@ export default function BillView() {
   return (
     <>
       <style>{`
-        .bv-doc { background: white; border: 1px solid #ddd; }
+        .bv-doc { width: 210mm; max-width: 100%; min-height: 297mm; box-sizing: border-box; background: white; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .bv-header { min-height: 180px; box-sizing: border-box; align-items: center; }
+        .bv-company-name { font-size: 32px; line-height: 1.15; }
+        .bv-company-detail { font-size: 15px; line-height: 1.5; }
+        .bv-content { padding: 30px 32px !important; }
+        .bv-table { font-size: 15px; }
+        .bv-table td { font-size: 15px; }
+        .bv-item-block { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .bv-item-image { display: block; width: 140px; height: 140px; object-fit: contain; }
+        .bv-item-details { width: 100%; padding-top: 12px; border-top: 1px solid #ddd; }
+        .bv-item-name { font-size: 17px; font-weight: 700; }
+        .bv-item-description { font-size: 15px; line-height: 1.5; color: #555; margin-top: 5px; }
         .bv-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: white; text-decoration: none; color: #333; }
         .bv-btn-primary { background: #007bff; color: white; border-color: #007bff; }
         .bv-btn-danger { color: #dc3545; border-color: transparent; }
-        @media print { .no-print { display: none !important; } .bv-doc { border: none; } @page { size: A4; margin: 0; } html, body { margin:0; background: white; } }
+        @media print { .no-print { display: none !important; } .bv-doc { width: 210mm; min-height: 297mm; box-shadow: none; border: none; } .bv-doc tr, .bv-doc > div:last-child { break-inside: avoid; } @page { size: A4 portrait; margin: 0; } html, body { margin:0; padding: 0; background: white; } }
       `}</style>
       <div style={{ maxWidth: "210mm", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
         <div className="no-print" style={{ display: "flex", gap: 8, padding: 12, background: "#f5f5f5", borderRadius: 6, marginBottom: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
@@ -101,22 +112,22 @@ export default function BillView() {
         </div>
 
         <div className="bv-doc">
-          <div style={{ padding: "20px 25px", borderBottom: "2px solid #333", display: "flex", justifyContent: "space-between" }}>
+          <div className="bv-header" style={{ padding: "14px 25px", borderBottom: "2px solid #333", display: "flex", justifyContent: "space-between", gap: 20 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 22 }}>{company.name}</div>
-              {company.address && <div style={{ fontSize: 11 }}>{company.address}</div>}
-              {company.phone && <div style={{ fontSize: 11 }}>{company.phone}{company.email && ` • ${company.email}`}</div>}
-              {company.gst_number && <div style={{ fontSize: 11, marginTop: 4 }}>GST: {company.gst_number}</div>}
+              <div className="bv-company-name" style={{ fontWeight: 700 }}>{company.name}</div>
+              {company.address && <div className="bv-company-detail">{company.address}</div>}
+              {company.phone && <div className="bv-company-detail">{company.phone}{company.email && ` • ${company.email}`}</div>}
+              {company.gst_number && <div className="bv-company-detail" style={{ marginTop: 4 }}>GST: {company.gst_number}</div>}
             </div>
-            {company.logo_url && <img src={company.logo_url} alt="logo" style={{ maxWidth: 120, maxHeight: 120, objectFit: "contain" }} />}
+            {company.logo_url && <img src={company.logo_url} alt="logo" style={{ width: 145, height: 145, maxWidth: "32%", objectFit: "contain", flexShrink: 0 }} />}
           </div>
 
-          <div style={{ padding: "12px 20px" }}>
-            <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>INVOICE</div>
+          <div style={{ padding: "20px 28px" }}>
+            <div style={{ fontSize: 30, fontWeight: 700, marginBottom: 18 }}>INVOICE</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 15 }}>
               <div style={{ background: "#fafafa", border: "1px solid #eee", padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase" }}>Invoice No.</div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{bill.bill_number}</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{bill.custom_bill_number || bill.bill_number}</div>
               </div>
               <div style={{ background: "#fafafa", border: "1px solid #eee", padding: 10, borderRadius: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase" }}>Date</div>
@@ -129,17 +140,17 @@ export default function BillView() {
             </div>
           </div>
 
-          <div style={{ padding: "20px 25px" }}>
-            <div style={{ marginBottom: 15 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", marginBottom: 5 }}>Bill To</div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{c?.name ?? "—"}</div>
-              {c?.address && <div style={{ fontSize: 12, color: "#333" }}>{c.address}</div>}
-              {c?.mobile && <div style={{ fontSize: 12, color: "#333" }}>📱 {c.mobile}</div>}
-              {c?.email && <div style={{ fontSize: 12, color: "#333" }}>📧 {c.email}</div>}
-              {(bill.buyer_gst_number || c?.gst_number) && <div style={{ fontSize: 12 }}>GST: {bill.buyer_gst_number || c?.gst_number}</div>}
+          <div className="bv-content" style={{ padding: "20px 25px" }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#666", textTransform: "uppercase", marginBottom: 7 }}>Bill To</div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{c?.name ?? "—"}</div>
+              {c?.address && <div style={{ fontSize: 15, color: "#333" }}>{c.address}</div>}
+              {c?.mobile && <div style={{ fontSize: 15, color: "#333" }}>📱 {c.mobile}</div>}
+              {c?.email && <div style={{ fontSize: 15, color: "#333" }}>📧 {c.email}</div>}
+              {(bill.buyer_gst_number || c?.gst_number) && <div style={{ fontSize: 15 }}>GST: {bill.buyer_gst_number || c?.gst_number}</div>}
             </div>
 
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="bv-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
                 <tr>
                   <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderBottom: "2px solid #333", background: "#fafafa" }}>Item</th>
@@ -152,11 +163,11 @@ export default function BillView() {
                 {items.map((it: any) => (
                   <tr key={it.id} style={{ borderBottom: "1px solid #eee" }}>
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        {it.image_url && <img src={it.image_url} alt={it.item_name} style={{ width: 70, height: 70, objectFit: "contain", border: "1px solid #ddd", borderRadius: 4, padding: 3 }} />}
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{it.item_name}</div>
-                          {it.description && <div style={{ fontSize: 12, color: "#666" }}>{it.description}</div>}
+                      <div className="bv-item-block">
+                        {it.image_url && <img className="bv-item-image" src={it.image_url} alt={it.item_name} style={{ border: "1px solid #ddd", borderRadius: 4, padding: 3, flexShrink: 0 }} />}
+                        <div className="bv-item-details">
+                          <div className="bv-item-name">{it.item_name}</div>
+                          {it.description && <div className="bv-item-description">{it.description}</div>}
                         </div>
                       </div>
                     </td>
@@ -173,7 +184,7 @@ export default function BillView() {
                 {bill.notes && <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Notes</div><div style={{ fontSize: 11 }}>{bill.notes}</div></div>}
                 {bill.payment_terms && <div style={{ background: "#fff3cd", padding: 10, borderRadius: 4, marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 700, color: "#856404" }}>WARRANTY / TERMS</div><div style={{ fontSize: 11 }}>{bill.payment_terms}</div></div>}
                 {(bill.account_number || bill.bank_name) && <div><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Bank Details</div><div style={{ fontSize: 11 }}>
-                  {bill.account_holder_name && <div>{bill.account_holder_name}</div>}
+                  <div>{bill.account_holder_name || "SPAG EAGLE GLOBAL PRIVATE LIMITED"}</div>
                   {bill.account_number && <div>Account: {bill.account_number}</div>}
                   {bill.ifsc_code && <div>IFSC: {bill.ifsc_code}</div>}
                   {bill.bank_name && <div>Bank: {bill.bank_name}</div>}

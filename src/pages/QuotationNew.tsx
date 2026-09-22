@@ -21,6 +21,7 @@ const blankItem = (): DraftItem => ({
   key: crypto.randomUUID(), model_id: null, item_name: "", description: "",
   features: [], image_url: null, quantity: 1, unit_price: 0,
 });
+const ACCOUNT_HOLDER_NAME = "SPAG EAGLE GLOBAL PRIVATE LIMITED";
 
 export default function QuotationNew() {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ export default function QuotationNew() {
   const [ifscCode, setIfscCode] = useState("SBIN0001613");
   const [bankName, setBankName] = useState("STATE BANK OF INDIA");
   const [bankBranch, setBankBranch] = useState("ADB PONDICHERRY");
-  const [accountHolderName, setAccountHolderName] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState(ACCOUNT_HOLDER_NAME);
   const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<"draft" | "sent" | "approved">("draft");
@@ -70,7 +71,7 @@ export default function QuotationNew() {
       setGstEnabled(Boolean(quotation.gst_enabled)); setCgstPct(Number(quotation.cgst_percentage ?? 9)); setSgstPct(Number(quotation.sgst_percentage ?? 9));
       setDiscountType((quotation.discount_type ?? "percentage") as DiscountType); setDiscountValue(Number(quotation.discount_value ?? 0));
       setNotes(quotation.notes ?? ""); setTerms(quotation.terms ?? ""); setAccountNumber(quotation.account_number ?? ""); setIfscCode(quotation.ifsc_code ?? "");
-      setBankName(quotation.bank_name ?? ""); setBankBranch(quotation.bank_branch ?? ""); setAccountHolderName(quotation.account_holder_name ?? "");
+      setBankName(quotation.bank_name ?? ""); setBankBranch(quotation.bank_branch ?? ""); setAccountHolderName(ACCOUNT_HOLDER_NAME);
       setItems((quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position).map((item: any) => ({
         key: item.id ?? crypto.randomUUID(), model_id: item.model_id, item_name: item.item_name ?? "", description: item.description ?? "",
         features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1), unit_price: Number(item.unit_price ?? 0),
@@ -93,7 +94,7 @@ export default function QuotationNew() {
     setDiscountType("percentage"); setDiscountValue(0); setValidityDays(7);
     setAccountNumber("45119431098"); setIfscCode("SBIN0001613");
     setBankName("STATE BANK OF INDIA"); setBankBranch("ADB PONDICHERRY");
-    setAccountHolderName("");
+    setAccountHolderName(ACCOUNT_HOLDER_NAME);
     toast.success("Form cleared");
   };
 
@@ -131,9 +132,10 @@ export default function QuotationNew() {
         discount_type: discountType, discount_amount: pricing.discountAmount,
         total_amount: pricing.total, status: id ? status : nextStatus, validity_days: validityDays,
         custom_quotation_number: customQuotationNumber || null, quotation_date: quotationDate || null,
+        ...(customQuotationNumber.trim() ? { quotation_number: customQuotationNumber.trim() } : {}),
         buyer_gst_number: gstNumber || null, notes, terms,
         account_number: accountNumber || null, ifsc_code: ifscCode || null,
-        account_holder_name: accountHolderName || null,
+        account_holder_name: ACCOUNT_HOLDER_NAME,
         bank_name: bankName || null, bank_branch: bankBranch || null,
       };
       const { data: quote, error: qErr } = id
@@ -238,7 +240,7 @@ export default function QuotationNew() {
         <Card>
           <CardHeader><CardTitle className="text-base">Payment Details</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <div><Label>Account Holder Name</Label><Input value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} /></div>
+            <div><Label>Account Holder Name</Label><Input value={accountHolderName} readOnly /></div>
             <div><Label>Account Number</Label><Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} /></div>
             <div><Label>IFSC Code</Label><Input value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} /></div>
             <div><Label>Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} /></div>

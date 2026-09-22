@@ -21,6 +21,7 @@ const blankItem = (): DraftItem => ({
   key: crypto.randomUUID(), model_id: null, item_name: "", description: "",
   features: [], image_url: null, quantity: 1, unit_price: 0,
 });
+const ACCOUNT_HOLDER_NAME = "SPAG EAGLE GLOBAL PRIVATE LIMITED";
 
 export default function BillNew() {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ export default function BillNew() {
   const [ifscCode, setIfscCode] = useState("SBIN0001613");
   const [bankName, setBankName] = useState("STATE BANK OF INDIA");
   const [bankBranch, setBankBranch] = useState("ADB PONDICHERRY");
-  const [accountHolderName, setAccountHolderName] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState(ACCOUNT_HOLDER_NAME);
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("draft");
@@ -70,7 +71,7 @@ export default function BillNew() {
       setDiscountType((bill.discount_type ?? "percentage") as DiscountType); setDiscountValue(Number(bill.discount_value ?? 0));
       setPaymentTerms(bill.payment_terms ?? ""); setNotes(bill.notes ?? ""); setAccountNumber(bill.account_number ?? "");
       setIfscCode(bill.ifsc_code ?? ""); setBankName(bill.bank_name ?? ""); setBankBranch(bill.bank_branch ?? "");
-      setAccountHolderName(bill.account_holder_name ?? "");
+      setAccountHolderName(ACCOUNT_HOLDER_NAME);
       setItems((bill.bill_items ?? []).sort((a: any, b: any) => a.position - b.position).map((item: any) => ({
         key: item.id ?? crypto.randomUUID(), model_id: item.model_id, item_name: item.item_name ?? "", description: item.description ?? "",
         features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1), unit_price: Number(item.unit_price ?? 0),
@@ -120,9 +121,10 @@ export default function BillNew() {
         discount_type: discountType, discount_amount: pricing.discountAmount,
         total_amount: pricing.total, status,
         custom_bill_number: customBillNumber || null, bill_date: billDate || null,
+        ...(customBillNumber.trim() ? { bill_number: customBillNumber.trim() } : {}),
         buyer_gst_number: gstNumber || null, notes, payment_terms: paymentTerms,
         account_number: accountNumber || null, ifsc_code: ifscCode || null,
-        account_holder_name: accountHolderName || null,
+        account_holder_name: ACCOUNT_HOLDER_NAME,
         bank_name: bankName || null, bank_branch: bankBranch || null,
       };
       const { data: bill, error: bErr } = id
@@ -227,7 +229,7 @@ export default function BillNew() {
             <div><Label>Warranty / Payment Terms</Label><Textarea value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} rows={3} /></div>
             <div><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></div>
             <div className="grid gap-3 md:grid-cols-2">
-              <div><Label>Account Holder Name</Label><Input value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} /></div>
+              <div><Label>Account Holder Name</Label><Input value={accountHolderName} readOnly /></div>
               <div><Label>Account Number</Label><Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} /></div>
               <div><Label>IFSC Code</Label><Input value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} /></div>
               <div><Label>Bank Name</Label><Input value={bankName} onChange={(e) => setBankName(e.target.value)} /></div>
