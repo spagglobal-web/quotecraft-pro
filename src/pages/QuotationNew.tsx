@@ -14,23 +14,36 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 interface DraftItem {
-  key: string; model_id: string | null; item_name: string; description: string;
-  features: string[]; image_url: string | null; quantity: number; unit_price: number;
+  key: string; model_id: string | null; productType: "purifier" | "pump" | "membrane"; item_name: string; description: string;
+  features: string[]; image_url: string | null; quantity: number; base_unit_price: number;
+  accessories: QuotationAccessory[];
 }
-const blankItem = (): DraftItem => ({
-  key: crypto.randomUUID(), model_id: null, item_name: "", description: "",
-  features: [], image_url: null, quantity: 1, unit_price: 0,
+interface QuotationAccessory {
+  productType: "pump" | "membrane"; model_id: string | null; item_name: string; description: string;
+  image_url: string | null; unit_price: number;
+}
+const blankItem = (productType: DraftItem["productType"] = "purifier"): DraftItem => ({
+  key: crypto.randomUUID(), model_id: null, productType, item_name: "", description: "",
+  features: [], image_url: null, quantity: 1, base_unit_price: 0, accessories: [],
 });
+const productTypeForModel = (availableModels: any[], modelId: string | null): DraftItem["productType"] => {
+  const category = String(availableModels.find((model) => model.id === modelId)?.category ?? "").toLowerCase();
+  if (category.includes("pump")) return "pump";
+  if (category.includes("membrane")) return "membrane";
+  return "purifier";
+};
 const ACCOUNT_HOLDER_NAME = "SPAG EAGLE GLOBAL PRIVATE LIMITED";
 
 export default function QuotationNew() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [models, setModels] = useState<any[]>([]);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("purifier_models").select("*").eq("active", true).order("model_name");
       setModels(data ?? []);
+      setModelsLoaded(true);
     })();
   }, []);
 
@@ -40,7 +53,7 @@ export default function QuotationNew() {
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [customQuotationNumber, setCustomQuotationNumber] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([blankItem()]);
+  const [items, setItems] = useState<DraftItem[]>([blankItem("purifier")]);
   const [gstEnabled, setGstEnabled] = useState(true);
   const [cgstPct, setCgstPct] = useState(9);
   const [sgstPct, setSgstPct] = useState(9);
@@ -59,7 +72,7 @@ export default function QuotationNew() {
   const [status, setStatus] = useState<"draft" | "sent" | "approved">("draft");
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !modelsLoaded) return;
     (async () => {
       const { data: quotation, error } = await (supabase as any).from("quotations").select("*, customers(*), quotation_items(*)").eq("id", id).single();
       if (error || !quotation) return toast.error(error?.message ?? "Quotation not found");
@@ -72,25 +85,52 @@ export default function QuotationNew() {
       setDiscountType((quotation.discount_type ?? "percentage") as DiscountType); setDiscountValue(Number(quotation.discount_value ?? 0));
       setNotes(quotation.notes ?? ""); setTerms(quotation.terms ?? ""); setAccountNumber(quotation.account_number ?? ""); setIfscCode(quotation.ifsc_code ?? "");
       setBankName(quotation.bank_name ?? ""); setBankBranch(quotation.bank_branch ?? ""); setAccountHolderName(ACCOUNT_HOLDER_NAME);
-      setItems((quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position).map((item: any) => ({
-        key: item.id ?? crypto.randomUUID(), model_id: item.model_id, item_name: item.item_name ?? "", description: item.description ?? "",
-        features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1), unit_price: Number(item.unit_price ?? 0),
-      })));
+      const savedItems = (quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position);
+      const firstPurifier = savedItems.find((item: any) => productTypeForModel(models, item.model_id) === "purifier");
+      const legacyAccessories = firstPurifier ? savedItems.filter((item: any) =>
+        ["pump", "membrane"].includes(productTypeForModel(models, item.model_id))
+      ) : [];
+      const accessoriesForFirst = [
+        ...(firstPurifier?.accessories ?? []),
+        ...legacyAccessories.map((item: any) => ({
+          productType: productTypeForModel(models, item.model_id), model_id: item.model_id,
+          item_name: item.item_name ?? "", description: item.description ?? "", image_url: item.image_url ?? null,
+          unit_price: Number(item.unit_price ?? 0),
+        })),
+      ];
+      setItems(savedItems.filter((item: any) => !legacyAccessories.includes(item)).map((item: any) => {
+        const savedAccessories = item.accessories ?? [];
+        const accessories = item === firstPurifier ? accessoriesForFirst : savedAccessories;
+        return {
+          key: item.id ?? crypto.randomUUID(), model_id: item.model_id,
+          productType: productTypeForModel(models, item.model_id), item_name: item.item_name ?? "", description: item.description ?? "",
+          features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1),
+          base_unit_price: Number(item.unit_price ?? 0) - savedAccessories.reduce((sum: number, accessory: QuotationAccessory) => sum + Number(accessory.unit_price || 0), 0),
+          accessories,
+        };
+      }));
     })();
-  }, [id]);
+  }, [id, modelsLoaded]);
 
   const pricing = useMemo(() => computePricing({
-    items: items.map((i) => ({ quantity: i.quantity, unit_price: i.unit_price })),
+    items: items.map((i) => ({ quantity: i.quantity, unit_price: i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0) })),
     gstEnabled, cgstPercentage: cgstPct, sgstPercentage: sgstPct, discountType, discountValue,
   }), [items, gstEnabled, cgstPct, sgstPct, discountType, discountValue]);
 
   const update = (key: string, patch: Partial<DraftItem>) =>
     setItems((arr) => arr.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
+  const modelsFor = (productType: DraftItem["productType"]) => models.filter((model: any) => {
+    const category = String(model.category ?? "").toLowerCase();
+    if (productType === "pump") return category.includes("pump");
+    if (productType === "membrane") return category.includes("membrane");
+    return !category.includes("pump") && !category.includes("membrane");
+  });
+
   const resetForm = () => {
     setName(""); setMobile(""); setEmail(""); setAddress(""); setGstNumber("");
     setCustomQuotationNumber("");
-    setItems([blankItem()]); setGstEnabled(true); setCgstPct(9); setSgstPct(9);
+    setItems([blankItem("purifier")]); setGstEnabled(true); setCgstPct(9); setSgstPct(9);
     setDiscountType("percentage"); setDiscountValue(0); setValidityDays(7);
     setAccountNumber("45119431098"); setIfscCode("SBIN0001613");
     setBankName("STATE BANK OF INDIA"); setBankBranch("ADB PONDICHERRY");
@@ -100,15 +140,28 @@ export default function QuotationNew() {
 
   const pickModel = (key: string, modelId: string) => {
     if (modelId === "__custom__") {
-      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, unit_price: 0 });
+      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, base_unit_price: 0, accessories: [] });
       return;
     }
     const m = models.find((x: any) => x.id === modelId);
     if (!m) return;
     update(key, {
       model_id: m.id, item_name: m.model_name, description: m.description ?? "",
-      features: m.features ?? [], image_url: m.image_url ?? null, unit_price: Number(m.price),
+      features: m.features ?? [], image_url: m.image_url ?? null, base_unit_price: Number(m.price),
     });
+  };
+
+  const pickAccessory = (key: string, productType: QuotationAccessory["productType"], modelId: string) => {
+    const model = modelId === "__none__" ? null : models.find((entry: any) => entry.id === modelId);
+    setItems((current) => current.map((item) => {
+      if (item.key !== key) return item;
+      const accessories = item.accessories.filter((accessory) => accessory.productType !== productType);
+      if (model) accessories.push({
+        productType, model_id: model.id, item_name: model.model_name, description: model.description ?? "",
+        image_url: model.image_url ?? null, unit_price: Number(model.price ?? 0),
+      });
+      return { ...item, accessories };
+    }));
   };
 
   async function save(nextStatus: "draft" | "sent" | "approved") {
@@ -145,8 +198,9 @@ export default function QuotationNew() {
       const lineItems = items.filter((i) => i.item_name).map((i, idx) => ({
         quotation_id: quote.id, model_id: i.model_id, item_name: i.item_name,
         description: i.description, features: i.features, image_url: i.image_url,
-        quantity: i.quantity, unit_price: i.unit_price,
-        total_price: Number(i.quantity) * Number(i.unit_price), position: idx,
+        accessories: i.accessories,
+        quantity: i.quantity, unit_price: i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0),
+        total_price: Number(i.quantity) * (i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0)), position: idx,
       }));
       if (id) {
         const { error } = await (supabase as any).from("quotation_items").delete().eq("quotation_id", id);
@@ -198,15 +252,30 @@ export default function QuotationNew() {
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <Label>Choose product</Label>
-                      <Select onValueChange={(v) => pickModel(item.key, v)} value={item.model_id ?? ""}>
-                        <SelectTrigger><SelectValue placeholder="Select from catalog or custom..." /></SelectTrigger>
+                      <Label>Choose purifier</Label>
+                      <Select onValueChange={(v) => pickModel(item.key, v)} value={item.model_id ?? "__custom__"}>
+                        <SelectTrigger><SelectValue placeholder="Select purifier from catalog..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__custom__">Custom item</SelectItem>
-                          {models.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.model_name} — {formatINR(Number(m.price))}</SelectItem>)}
+                          {modelsFor("purifier").map((m: any) => <SelectItem key={m.id} value={m.id}>{m.model_name} — {formatINR(Number(m.price))}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
+                    {item.productType === "purifier" && item.model_id && <div className="grid gap-3 md:grid-cols-2">
+                      {(["pump", "membrane"] as const).map((accessoryType) => {
+                        const selected = item.accessories.find((accessory) => accessory.productType === accessoryType);
+                        return <div key={accessoryType}>
+                          <Label>{accessoryType === "pump" ? "Pump" : "Membrane"}</Label>
+                          <Select value={selected?.model_id ?? "__none__"} onValueChange={(modelId) => pickAccessory(item.key, accessoryType, modelId)}>
+                            <SelectTrigger><SelectValue placeholder={`Select ${accessoryType} (optional)`} /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">None</SelectItem>
+                              {modelsFor(accessoryType).map((model: any) => <SelectItem key={model.id} value={model.id}>{model.model_name} — {formatINR(Number(model.price))}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>;
+                      })}
+                    </div>}
                     <div className="grid grid-cols-2 gap-3">
                       <div><Label>Item name</Label><Input value={item.item_name} onChange={(e) => update(item.key, { item_name: e.target.value })} /></div>
                       <div><Label>Image URL</Label><Input value={item.image_url ?? ""} onChange={(e) => update(item.key, { image_url: e.target.value })} /></div>
@@ -219,8 +288,8 @@ export default function QuotationNew() {
                     )}
                     <div className="grid grid-cols-3 gap-3">
                       <div><Label>Qty</Label><Input type="number" min={1} value={item.quantity} onChange={(e) => update(item.key, { quantity: Number(e.target.value) || 0 })} /></div>
-                      <div><Label>Unit Price</Label><Input type="number" min={0} value={item.unit_price} onChange={(e) => update(item.key, { unit_price: Number(e.target.value) || 0 })} /></div>
-                      <div><Label>Total</Label><div className="flex h-9 items-center rounded-md border bg-muted/40 px-3 font-mono text-sm font-semibold">{formatINR((item.quantity || 0) * (item.unit_price || 0))}</div></div>
+                      <div><Label>{item.accessories.length ? "Purifier Price" : "Unit Price"}</Label><Input type="number" min={0} value={item.base_unit_price} onChange={(e) => update(item.key, { base_unit_price: Number(e.target.value) || 0 })} /></div>
+                      <div><Label>Total (incl. selected parts)</Label><div className="flex h-9 items-center rounded-md border bg-muted/40 px-3 font-mono text-sm font-semibold">{formatINR((item.quantity || 0) * (item.base_unit_price + item.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0)))}</div></div>
                     </div>
                   </div>
                 </div>

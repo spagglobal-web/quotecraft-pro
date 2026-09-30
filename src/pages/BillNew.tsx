@@ -14,33 +14,38 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 interface DraftItem {
-  key: string; model_id: string | null; item_name: string; description: string;
-  features: string[]; image_url: string | null; quantity: number; unit_price: number;
+  key: string; model_id: string | null; productType: "purifier" | "pump" | "membrane"; item_name: string; description: string;
+  features: string[]; image_url: string | null; color_name: string; quantity: number; base_unit_price: number;
+  accessories: BillAccessory[];
 }
-const blankItem = (): DraftItem => ({
-  key: crypto.randomUUID(), model_id: null, item_name: "", description: "",
-  features: [], image_url: null, quantity: 1, unit_price: 0,
+interface BillAccessory {
+  productType: "pump" | "membrane"; model_id: string | null; item_name: string; description: string;
+  image_url: string | null; color_name: string; unit_price: number;
+}
+const blankItem = (productType: DraftItem["productType"] = "purifier"): DraftItem => ({
+  key: createDraftKey(), model_id: null, productType, item_name: "", description: "",
+  features: [], image_url: null, color_name: "", quantity: 1, base_unit_price: 0, accessories: [],
 });
+const createDraftKey = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const productTypeForModel = (models: any[], modelId: string | null): DraftItem["productType"] => {
+  const category = String(models.find((model) => model.id === modelId)?.category ?? "").toLowerCase();
+  if (category.includes("pump")) return "pump";
+  if (category.includes("membrane")) return "membrane";
+  return "purifier";
+};
 const ACCOUNT_HOLDER_NAME = "SPAG EAGLE GLOBAL PRIVATE LIMITED";
 
 export default function BillNew() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [models, setModels] = useState<any[]>([]);
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("purifier_models").select("*").eq("active", true).order("model_name");
-      setModels(data ?? []);
-    })();
-  }, []);
-
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [customBillNumber, setCustomBillNumber] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([blankItem()]);
+  const [items, setItems] = useState<DraftItem[]>([blankItem("purifier")]);
   const [gstEnabled, setGstEnabled] = useState(true);
   const [cgstPct, setCgstPct] = useState(9);
   const [sgstPct, setSgstPct] = useState(9);
@@ -58,8 +63,11 @@ export default function BillNew() {
   const [status, setStatus] = useState("draft");
 
   useEffect(() => {
-    if (!id) return;
     (async () => {
+      const { data: modelData } = await supabase.from("purifier_models").select("*").eq("active", true).order("model_name");
+      const availableModels = modelData ?? [];
+      setModels(availableModels);
+      if (!id) return;
       const { data: bill, error } = await (supabase as any).from("bills").select("*, customers(*), bill_items(*)").eq("id", id).single();
       if (error || !bill) return toast.error(error?.message ?? "Bill not found");
       const customer = bill.customers ?? {};
@@ -72,31 +80,59 @@ export default function BillNew() {
       setPaymentTerms(bill.payment_terms ?? ""); setNotes(bill.notes ?? ""); setAccountNumber(bill.account_number ?? "");
       setIfscCode(bill.ifsc_code ?? ""); setBankName(bill.bank_name ?? ""); setBankBranch(bill.bank_branch ?? "");
       setAccountHolderName(ACCOUNT_HOLDER_NAME);
-      setItems((bill.bill_items ?? []).sort((a: any, b: any) => a.position - b.position).map((item: any) => ({
-        key: item.id ?? crypto.randomUUID(), model_id: item.model_id, item_name: item.item_name ?? "", description: item.description ?? "",
-        features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1), unit_price: Number(item.unit_price ?? 0),
-      })));
+      const savedItems = (bill.bill_items ?? []).sort((a: any, b: any) => a.position - b.position);
+      const firstPurifier = savedItems.find((item: any) => productTypeForModel(availableModels, item.model_id) === "purifier");
+      const legacyAccessories = firstPurifier ? savedItems.filter((item: any) =>
+        ["pump", "membrane"].includes(productTypeForModel(availableModels, item.model_id))
+      ) : [];
+      const accessoriesForFirst = [
+        ...(firstPurifier?.accessories ?? []),
+        ...legacyAccessories.map((item: any) => ({
+          productType: productTypeForModel(availableModels, item.model_id), model_id: item.model_id,
+          item_name: item.item_name ?? "", description: item.description ?? "", image_url: item.image_url ?? null,
+          color_name: item.color_name ?? "", unit_price: Number(item.unit_price ?? 0),
+        })),
+      ];
+      setItems(savedItems.filter((item: any) => !legacyAccessories.includes(item)).map((item: any) => {
+        const savedAccessories = item.accessories ?? [];
+        const accessories = item === firstPurifier ? accessoriesForFirst : savedAccessories;
+        return {
+          key: item.id ?? createDraftKey(), model_id: item.model_id,
+          productType: productTypeForModel(availableModels, item.model_id), item_name: item.item_name ?? "", description: item.description ?? "",
+          features: item.features ?? [], image_url: item.image_url, color_name: item.color_name ?? "", quantity: Number(item.quantity ?? 1),
+          base_unit_price: Number(item.unit_price ?? 0) - savedAccessories.reduce((sum: number, accessory: BillAccessory) => sum + Number(accessory.unit_price || 0), 0),
+          accessories,
+        };
+      }));
     })();
   }, [id]);
 
   const pricing = useMemo(() => computePricing({
-    items: items.map((i) => ({ quantity: i.quantity, unit_price: i.unit_price })),
+    items: items.map((i) => ({ quantity: i.quantity, unit_price: i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0) })),
     gstEnabled, cgstPercentage: cgstPct, sgstPercentage: sgstPct, discountType, discountValue,
   }), [items, gstEnabled, cgstPct, sgstPct, discountType, discountValue]);
 
   const update = (key: string, patch: Partial<DraftItem>) =>
     setItems((arr) => arr.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
+  const modelsFor = (productType: DraftItem["productType"], selectedModelId: string | null) => models.filter((model: any) => {
+    if (model.id === selectedModelId) return true;
+    const category = String(model.category ?? "").toLowerCase();
+    if (productType === "pump") return category.includes("pump");
+    if (productType === "membrane") return category.includes("membrane");
+    return !category.includes("pump") && !category.includes("membrane") && !category.includes("cabinet");
+  });
+
   const pickModel = (key: string, modelId: string) => {
     if (modelId === "__custom__") {
-      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, unit_price: 0 });
+      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, color_name: "", base_unit_price: 0, accessories: [] });
       return;
     }
     const m = models.find((x: any) => x.id === modelId);
     if (!m) return;
     update(key, {
       model_id: m.id, item_name: m.model_name, description: m.description ?? "",
-      features: m.features ?? [], image_url: m.image_url ?? null, unit_price: Number(m.price),
+      features: m.features ?? [], image_url: m.image_url ?? null, color_name: "", base_unit_price: Number(m.price),
     });
   };
 
@@ -133,9 +169,10 @@ export default function BillNew() {
       if (bErr) throw bErr;
       const lineItems = items.filter((i) => i.item_name).map((i, idx) => ({
         bill_id: bill.id, model_id: i.model_id, item_name: i.item_name,
-        description: i.description, features: i.features, image_url: i.image_url,
-        quantity: i.quantity, unit_price: i.unit_price,
-        total_price: Number(i.quantity) * Number(i.unit_price), position: idx,
+        description: i.description, features: i.features, image_url: i.image_url, color_name: i.color_name || null,
+        accessories: i.accessories,
+        quantity: i.quantity, unit_price: i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0),
+        total_price: Number(i.quantity) * (i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0)), position: idx,
       }));
       if (id) {
         const { error } = await (supabase as any).from("bill_items").delete().eq("bill_id", id);
@@ -183,15 +220,31 @@ export default function BillNew() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__custom__">Custom Item</SelectItem>
-                      {models.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.model_name} ({formatINR(Number(m.price))})</SelectItem>)}
+                      {modelsFor("purifier", item.model_id).map((m: any) => <SelectItem key={m.id} value={m.id}>{m.model_name} ({formatINR(Number(m.price))})</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+                {item.model_id && (models.find((model: any) => model.id === item.model_id)?.color_variants?.length ?? 0) > 0 && <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div><Label>Colour</Label>
+                    <Select value={item.color_name || "__standard__"} onValueChange={(colorName) => {
+                      const model = models.find((entry: any) => entry.id === item.model_id);
+                      const variant = model?.color_variants?.find((entry: any) => entry.name === colorName);
+                      update(item.key, { color_name: variant?.name ?? "", image_url: variant?.image_url ?? model?.image_url ?? null });
+                    }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__standard__">Standard</SelectItem>
+                        {models.find((model: any) => model.id === item.model_id)?.color_variants?.map((variant: any) => <SelectItem key={variant.id ?? variant.name} value={variant.name}>{variant.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {item.image_url && <img src={item.image_url} alt={item.color_name || item.item_name} className="h-14 w-16 rounded border object-contain" />}
+                </div>}
                 <div className="grid gap-3 md:grid-cols-2">
                   <div><Label>Name *</Label><Input value={item.item_name} onChange={(e) => update(item.key, { item_name: e.target.value })} /></div>
-                  <div><Label>Unit Price</Label><Input type="number" value={item.unit_price} onChange={(e) => update(item.key, { unit_price: Number(e.target.value) })} /></div>
+                  <div><Label>{item.accessories.length ? "Purifier Price" : "Unit Price"}</Label><Input type="number" value={item.base_unit_price} onChange={(e) => update(item.key, { base_unit_price: Number(e.target.value) })} /></div>
                   <div><Label>Qty</Label><Input type="number" min="1" value={item.quantity} onChange={(e) => update(item.key, { quantity: Number(e.target.value) })} /></div>
-                  <div><Label>Total</Label><div className="pt-2 font-semibold">{formatINR(item.quantity * item.unit_price)}</div></div>
+                  <div><Label>Total (incl. selected parts)</Label><div className="pt-2 font-semibold">{formatINR(item.quantity * (item.base_unit_price + item.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0)))}</div></div>
                 </div>
                 <div><Label>Description</Label><Textarea value={item.description} onChange={(e) => update(item.key, { description: e.target.value })} rows={2} /></div>
               </div>

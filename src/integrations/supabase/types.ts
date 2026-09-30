@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           active: boolean
           category: string
+          color_variants: Json
           created_at: string
           description: string | null
           features: string[]
@@ -60,6 +61,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string
+          color_variants?: Json
           created_at?: string
           description?: string | null
           features?: string[]
@@ -72,6 +74,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string
+          color_variants?: Json
           created_at?: string
           description?: string | null
           features?: string[]

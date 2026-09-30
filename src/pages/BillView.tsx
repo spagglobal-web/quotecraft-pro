@@ -22,6 +22,15 @@ export default function BillView() {
 
   const bill = data;
   const items = (bill.bill_items ?? []).sort((a: any, b: any) => a.position - b.position);
+  const showcaseItems = items.flatMap((item: any) => [
+    { ...item, showcaseKey: `item-${item.id}`, showcaseName: item.item_name, showcaseDescription: item.features?.[0] || item.description },
+    ...(item.accessories ?? []).map((accessory: any, index: number) => ({
+      ...accessory,
+      showcaseKey: `accessory-${item.id}-${index}`,
+      showcaseName: accessory.item_name,
+      showcaseDescription: accessory.description,
+    })),
+  ]).slice(0, 3);
   const c = bill.customers;
   const created = new Date(bill.bill_date || bill.created_at);
 
@@ -47,7 +56,8 @@ export default function BillView() {
     if (error || !nb) return toast.error(error?.message ?? "Failed");
     await (supabase as any).from("bill_items").insert(items.map((i: any) => ({
       bill_id: nb.id, model_id: i.model_id, item_name: i.item_name,
-      description: i.description, features: i.features, image_url: i.image_url,
+      description: i.description, features: i.features, image_url: i.image_url, color_name: i.color_name ?? null,
+      accessories: i.accessories ?? [],
       quantity: i.quantity, unit_price: i.unit_price, total_price: i.total_price, position: i.position,
     })));
     toast.success(`Duplicated as ${nb.bill_number}`);
@@ -79,15 +89,52 @@ export default function BillView() {
         .bv-content { padding: 30px 32px !important; }
         .bv-table { font-size: 15px; }
         .bv-table td { font-size: 15px; }
-        .bv-item-block { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .bv-item-image { display: block; width: 140px; height: 140px; object-fit: contain; }
-        .bv-item-details { width: 100%; padding-top: 12px; border-top: 1px solid #ddd; }
         .bv-item-name { font-size: 17px; font-weight: 700; }
-        .bv-item-description { font-size: 15px; line-height: 1.5; color: #555; margin-top: 5px; }
+        .bv-item-description { font-size: 15px; line-height: 1.5; color: #555; margin-top: 5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bv-showcase { display: grid; gap: 8px; padding: 10px; border-bottom: 1px solid #ddd; }
+        .bv-showcase-descriptions, .bv-showcase-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .bv-showcase-description { min-width: 0; }
+        .bv-showcase-description strong { display: block; font-size: 13px; margin-bottom: 3px; }
+        .bv-showcase-description span { display: block; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.35; color: #555; white-space: nowrap; }
+        .bv-showcase-image { width: 100%; aspect-ratio: 5 / 6; height: auto; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #ddd; background: #fafafa; }
+        .bv-showcase-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .bv-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: white; text-decoration: none; color: #333; }
         .bv-btn-primary { background: #007bff; color: white; border-color: #007bff; }
         .bv-btn-danger { color: #dc3545; border-color: transparent; }
-        @media print { .no-print { display: none !important; } .bv-doc { width: 210mm; min-height: 297mm; box-shadow: none; border: none; } .bv-doc tr, .bv-doc > div:last-child { break-inside: avoid; } @page { size: A4 portrait; margin: 0; } html, body { margin:0; padding: 0; background: white; } }
+        @page { size: A4 portrait; margin: 5mm; }
+        @media print {
+          .no-print { display: none !important; }
+          .bv-doc { width: 200mm; height: auto; min-height: 0; max-height: none; overflow: visible; page-break-after: avoid; break-after: avoid-page; box-shadow: none; border: none; }
+          .bv-header { height: 50mm; min-height: 50mm; padding: 2mm 5mm !important; }
+          .bv-header > div:first-child { flex: 1; min-width: 0; }
+          .bv-company-name { font-size: 30px !important; line-height: 1.1; overflow-wrap: anywhere; }
+          .bv-company-detail { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+          .bv-header img { width: 45mm !important; height: 45mm !important; }
+          .bv-invoice-meta { height: 30mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; padding: 2mm 6mm !important; }
+          .bv-invoice-meta > div:first-child { font-size: 20px !important; line-height: 1.1; margin-bottom: 1mm !important; }
+          .bv-invoice-meta > div:last-child { flex: 1; gap: 2mm !important; }
+          .bv-invoice-meta > div:last-child > div { padding: 1.5mm !important; display: flex; flex-direction: column; justify-content: center; }
+          .bv-invoice-meta > div:last-child > div > div:last-child { font-size: 10px !important; }
+          .bv-content { padding: 10px 16px !important; }
+          .bv-content > div:first-child { margin-bottom: 10px !important; }
+          .bv-content > div:first-child > div { font-size: 11px !important; }
+          .bv-content > div:first-child > div:nth-child(2) { font-size: 14px !important; }
+          .bv-showcase { gap: 5px; padding: 6px; }
+          .bv-showcase-descriptions, .bv-showcase-images { gap: 5px; }
+          .bv-showcase-description strong { font-size: 10px; }
+          .bv-showcase-description span { font-size: 9px; line-height: 1.2; }
+          .bv-showcase-image { aspect-ratio: 5 / 6; height: auto; }
+          .bv-table { font-size: 10px !important; }
+          .bv-table th { padding: 4px !important; }
+          .bv-table td { padding: 4px !important; font-size: 10px !important; }
+          .bv-item-name { font-size: 10px; }
+          .bv-item-description { font-size: 9px; line-height: 1.2; }
+          .bv-content > div:last-child { gap: 10px !important; margin-top: 8px !important; padding-top: 8px !important; }
+          .bv-content > div:last-child > div:last-child { padding: 8px !important; }
+          .bv-doc tr, .bv-doc > div:last-child, .bv-showcase { break-inside: avoid; }
+          @page { size: A4 portrait; margin: 5mm; }
+          html, body { margin: 0; padding: 0; background: white; }
+        }
       `}</style>
       <div style={{ maxWidth: "210mm", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
         <div className="no-print" style={{ display: "flex", gap: 8, padding: 12, background: "#f5f5f5", borderRadius: 6, marginBottom: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
@@ -122,7 +169,7 @@ export default function BillView() {
             {company.logo_url && <img src={company.logo_url} alt="logo" style={{ width: 145, height: 145, maxWidth: "32%", objectFit: "contain", flexShrink: 0 }} />}
           </div>
 
-          <div style={{ padding: "20px 28px" }}>
+          <div className="bv-invoice-meta" style={{ padding: "20px 28px" }}>
             <div style={{ fontSize: 30, fontWeight: 700, marginBottom: 18 }}>INVOICE</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 15 }}>
               <div style={{ background: "#fafafa", border: "1px solid #eee", padding: 10, borderRadius: 4 }}>
@@ -150,6 +197,24 @@ export default function BillView() {
               {(bill.buyer_gst_number || c?.gst_number) && <div style={{ fontSize: 15 }}>GST: {bill.buyer_gst_number || c?.gst_number}</div>}
             </div>
 
+            <div className="bv-showcase">
+              <div className="bv-showcase-descriptions">
+                {showcaseItems.map((it: any) => (
+                  <div className="bv-showcase-description" key={`description-${it.showcaseKey}`}>
+                    <strong>{it.showcaseName}</strong>
+                    <span>{it.showcaseDescription || "No description provided"}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bv-showcase-images">
+                {showcaseItems.map((it: any) => (
+                  <div className="bv-showcase-image" key={`image-${it.showcaseKey}`}>
+                    {it.image_url ? <img src={it.image_url} alt={it.showcaseName} /> : <span>No image</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <table className="bv-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
                 <tr>
@@ -163,12 +228,15 @@ export default function BillView() {
                 {items.map((it: any) => (
                   <tr key={it.id} style={{ borderBottom: "1px solid #eee" }}>
                     <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
-                      <div className="bv-item-block">
-                        {it.image_url && <img className="bv-item-image" src={it.image_url} alt={it.item_name} style={{ border: "1px solid #ddd", borderRadius: 4, padding: 3, flexShrink: 0 }} />}
-                        <div className="bv-item-details">
-                          <div className="bv-item-name">{it.item_name}</div>
-                          {it.description && <div className="bv-item-description">{it.description}</div>}
-                        </div>
+                      <div>
+                        <div className="bv-item-name">{it.item_name}</div>
+                        {it.color_name && <div className="bv-item-description">Colour: {it.color_name}</div>}
+                        {(it.features?.[0] || it.description) && <div className="bv-item-description">{it.features?.[0] || it.description}</div>}
+                        {(it.accessories ?? []).map((accessory: any, index: number) => (
+                          <div className="bv-item-description" key={`${it.id}-accessory-${index}`}>
+                            {accessory.productType === "pump" ? "Pump" : "Membrane"}: {accessory.item_name}{accessory.color_name ? ` (${accessory.color_name})` : ""}
+                          </div>
+                        ))}
                       </div>
                     </td>
                     <td style={{ padding: "10px 8px", textAlign: "center", fontWeight: 700 }}>{it.quantity}</td>

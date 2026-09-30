@@ -22,6 +22,15 @@ export default function QuotationView() {
   if (!data) return <div className="p-8 text-center">Loading...</div>;
   const quotation = data as any;
   const items = (quotation.quotation_items ?? []).sort((a: any, b: any) => a.position - b.position);
+  const showcaseItems = items.flatMap((item: any) => [
+    { ...item, showcaseKey: `item-${item.id}`, showcaseName: item.item_name, showcaseDescription: item.description },
+    ...(item.accessories ?? []).map((accessory: any, index: number) => ({
+      ...accessory,
+      showcaseKey: `accessory-${item.id}-${index}`,
+      showcaseName: accessory.item_name,
+      showcaseDescription: accessory.description,
+    })),
+  ]).slice(0, 3);
   const c = quotation.customers as any;
   const created = new Date(quotation.quotation_date || quotation.created_at);
   const validUntil = new Date(created);
@@ -51,6 +60,7 @@ export default function QuotationView() {
     await supabase.from("quotation_items").insert(items.map((i: any) => ({
       quotation_id: nq.id, model_id: i.model_id, item_name: i.item_name,
       description: i.description, features: i.features, image_url: i.image_url,
+      accessories: i.accessories ?? [],
       quantity: i.quantity, unit_price: i.unit_price, total_price: i.total_price, position: i.position,
     })));
     toast.success(`Duplicated as ${nq.quotation_number}`);
@@ -120,6 +130,13 @@ export default function QuotationView() {
         .qv-item-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .qv-item-name { font-size: 13px; font-weight: 700; color: #1f2937; margin-bottom: 3px; }
         .qv-item-desc { font-size: 12px; color: #6b7280; line-height: 1.4; }
+        .qv-product-showcase { display: grid; gap: 14px; padding: 16px 14px; border-bottom: 1px solid #e5e7eb; }
+        .qv-product-descriptions, .qv-product-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        .qv-product-description { min-height: 64px; }
+        .qv-product-description strong { display: block; font-size: 14px; margin-bottom: 5px; }
+        .qv-product-description span { font-size: 12px; line-height: 1.4; color: #6b7280; }
+        .qv-product-image { width: 100%; height: 150px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .qv-product-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .qv-footer { display: grid; grid-template-columns: 1fr 220px; gap: 40px; padding: 28px 40px; border-top: 1px solid #e5e7eb; background: #f9fafb; }
         .qv-notes-label { font-size: 11px; font-weight: 700; color: #6b7280; letter-spacing: 0.05em; text-transform: uppercase; }
         .qv-notes-text { font-size: 13px; color: #4b5563; line-height: 1.6; white-space: pre-wrap; }
@@ -130,13 +147,44 @@ export default function QuotationView() {
         .qv-grand-total { display: flex; justify-content: space-between; padding: 12px 14px; background: #1f2937; color: white; }
         .qv-grand-label { font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .qv-grand-value { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; }
-        @page { size: A4 portrait; margin: 0; }
+        @page { size: A4 portrait; margin: 5mm; }
         @media print {
           html, body { margin: 0; padding: 0; background: white; }
           .no-print { display: none !important; }
-          .qv-root { width: 210mm; max-width: none; padding: 0; }
-          .qv-document { width: 210mm; min-height: 297mm; box-shadow: none; border: none; }
-          .qv-table tr, .qv-footer { break-inside: avoid; }
+          .qv-root { width: 200mm; max-width: none; padding: 0; margin: 0; }
+          .qv-document { width: 200mm; min-height: 0; height: auto; max-height: none; overflow: visible; display: flex; flex-direction: column; page-break-after: avoid; break-after: avoid-page; box-shadow: none; border: none; }
+          .qv-header { padding: 10px 20px; }
+          .qv-header-top { gap: 12px; margin-bottom: 8px; }
+          .qv-company-logo { width: 72px; height: 72px; }
+          .qv-company-section { gap: 12px; }
+          .qv-company-info h1 { font-size: 18px; }
+          .qv-company-info p { font-size: 10px; line-height: 1.25; }
+          .qv-quotation-num { min-width: 145px; }
+          .qv-quotation-num-value { font-size: 18px; }
+          .qv-meta-strip { gap: 10px; }
+          .qv-meta-label { font-size: 9px; margin-bottom: 2px; }
+          .qv-meta-value { font-size: 11px; }
+          .qv-body-grid { grid-template-columns: 165px 1fr; }
+          .qv-bill-panel { padding: 12px 10px; }
+          .qv-customer-name { font-size: 14px; margin-bottom: 8px; }
+          .qv-contact-item { font-size: 10px; line-height: 1.35; margin-bottom: 3px; }
+          .qv-product-showcase { gap: 6px; padding: 8px; }
+          .qv-product-descriptions, .qv-product-images { gap: 6px; }
+          .qv-product-description { min-height: 0; max-height: none; overflow: visible; }
+          .qv-product-description strong { font-size: 11px; margin-bottom: 2px; }
+          .qv-product-description span { font-size: 9px; line-height: 1.2; }
+          .qv-product-image { height: 72px; }
+          .qv-table th { padding: 4px 6px; font-size: 9px; }
+          .qv-table td { padding: 4px 6px; font-size: 10px; }
+          .qv-item-name { font-size: 10px; }
+          .qv-footer { gap: 12px; padding: 10px 20px; grid-template-columns: 1fr 175px; }
+          .qv-document > .qv-footer { margin-top: 4px; }
+          .qv-notes-label { font-size: 9px; }
+          .qv-notes-text { font-size: 10px; line-height: 1.3; }
+          .qv-total-row { padding: 4px 8px; font-size: 10px; }
+          .qv-grand-total { padding: 6px 8px; }
+          .qv-grand-value { font-size: 16px; }
+          .qv-table tr, .qv-footer, .qv-product-showcase { break-inside: avoid; }
         }
       `}</style>
       <div className="qv-root mx-auto max-w-5xl space-y-4 p-4">
@@ -198,25 +246,27 @@ export default function QuotationView() {
               {(quotation.buyer_gst_number || c?.gst_number) && <div className="qv-contact-item">GST: {quotation.buyer_gst_number || c?.gst_number}</div>}
             </div>
             <div>
+              <div className="qv-product-showcase">
+                <div className="qv-product-descriptions">
+                  {showcaseItems.map((it: any) => <div className="qv-product-description" key={`description-${it.showcaseKey}`}><strong>{it.showcaseName}</strong><span>{it.showcaseDescription || "No description provided"}</span></div>)}
+                </div>
+                <div className="qv-product-images">
+                  {showcaseItems.map((it: any) => <div className="qv-product-image" key={`image-${it.showcaseKey}`}>{it.image_url ? <img src={it.image_url} alt={it.showcaseName} /> : <span className="qv-product-desc">No image</span>}</div>)}
+                </div>
+              </div>
               <table className="qv-table">
-                <thead><tr><th style={{ width: 30 }}>#</th><th>Description</th><th style={{ width: 50 }}>Qty</th><th style={{ width: 90 }}>Unit Price</th><th style={{ width: 90 }}>Amount</th></tr></thead>
+                <thead><tr><th style={{ width: 30 }}>#</th><th>Product</th><th style={{ width: 50 }}>Qty</th><th style={{ width: 90 }}>Unit Price</th><th style={{ width: 90 }}>Amount</th></tr></thead>
                 <tbody>
                   {items.map((it: any, idx: number) => (
                     <tr key={it.id}>
                       <td><div style={{ fontFamily: "monospace", fontWeight: 700, color: "#6b7280" }}>{String(idx + 1).padStart(2, "0")}</div></td>
                       <td>
-                        <div className="qv-item-cell">
-                          {it.image_url && <div className="qv-item-image"><img src={it.image_url} alt={it.item_name} /></div>}
-                          <div className="qv-item-details">
-                            <div className="qv-item-name">{it.item_name}</div>
-                            {it.description && <div className="qv-item-desc">{it.description}</div>}
-                            {it.features?.length > 0 && (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-                                {it.features.map((f: string, i: number) => <span key={i} style={{ fontSize: 11, background: "#f9fafb", padding: "2px 6px", borderRadius: 2, border: "1px solid #e5e7eb" }}>• {f}</span>)}
-                              </div>
-                            )}
+                        <div className="qv-item-name">{it.item_name}</div>
+                        {(it.accessories ?? []).map((accessory: any, accessoryIndex: number) => (
+                          <div className="qv-item-desc" key={`${it.id}-accessory-${accessoryIndex}`}>
+                            {accessory.productType === "pump" ? "Pump" : "Membrane"}: {accessory.item_name}
                           </div>
-                        </div>
+                        ))}
                       </td>
                       <td><strong>{it.quantity}</strong></td>
                       <td style={{ fontFamily: "monospace" }}>{formatINR(Number(it.unit_price))}</td>
