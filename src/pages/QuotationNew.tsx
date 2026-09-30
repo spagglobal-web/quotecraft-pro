@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface DraftItem {
   key: string; model_id: string | null; productType: "purifier" | "pump" | "membrane"; item_name: string; description: string;
-  features: string[]; image_url: string | null; quantity: number; base_unit_price: number;
+  features: string[]; image_url: string | null; color_name: string; quantity: number; base_unit_price: number;
   accessories: QuotationAccessory[];
 }
 interface QuotationAccessory {
@@ -24,7 +25,7 @@ interface QuotationAccessory {
 }
 const blankItem = (productType: DraftItem["productType"] = "purifier"): DraftItem => ({
   key: crypto.randomUUID(), model_id: null, productType, item_name: "", description: "",
-  features: [], image_url: null, quantity: 1, base_unit_price: 0, accessories: [],
+  features: [], image_url: null, color_name: "", quantity: 1, base_unit_price: 0, accessories: [],
 });
 const productTypeForModel = (availableModels: any[], modelId: string | null): DraftItem["productType"] => {
   const category = String(availableModels.find((model) => model.id === modelId)?.category ?? "").toLowerCase();
@@ -104,7 +105,7 @@ export default function QuotationNew() {
         return {
           key: item.id ?? crypto.randomUUID(), model_id: item.model_id,
           productType: productTypeForModel(models, item.model_id), item_name: item.item_name ?? "", description: item.description ?? "",
-          features: item.features ?? [], image_url: item.image_url, quantity: Number(item.quantity ?? 1),
+          features: item.features ?? [], image_url: item.image_url, color_name: item.color_name ?? "", quantity: Number(item.quantity ?? 1),
           base_unit_price: Number(item.unit_price ?? 0) - savedAccessories.reduce((sum: number, accessory: QuotationAccessory) => sum + Number(accessory.unit_price || 0), 0),
           accessories,
         };
@@ -124,7 +125,7 @@ export default function QuotationNew() {
     const category = String(model.category ?? "").toLowerCase();
     if (productType === "pump") return category.includes("pump");
     if (productType === "membrane") return category.includes("membrane");
-    return !category.includes("pump") && !category.includes("membrane");
+    return !category.includes("pump") && !category.includes("membrane") && !category.includes("cabinet");
   });
 
   const resetForm = () => {
@@ -140,28 +141,15 @@ export default function QuotationNew() {
 
   const pickModel = (key: string, modelId: string) => {
     if (modelId === "__custom__") {
-      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, base_unit_price: 0, accessories: [] });
+      update(key, { model_id: null, item_name: "", description: "", features: [], image_url: null, color_name: "", base_unit_price: 0, accessories: [] });
       return;
     }
     const m = models.find((x: any) => x.id === modelId);
     if (!m) return;
     update(key, {
       model_id: m.id, item_name: m.model_name, description: m.description ?? "",
-      features: m.features ?? [], image_url: m.image_url ?? null, base_unit_price: Number(m.price),
+      features: m.features ?? [], image_url: m.image_url ?? null, color_name: "", base_unit_price: Number(m.price),
     });
-  };
-
-  const pickAccessory = (key: string, productType: QuotationAccessory["productType"], modelId: string) => {
-    const model = modelId === "__none__" ? null : models.find((entry: any) => entry.id === modelId);
-    setItems((current) => current.map((item) => {
-      if (item.key !== key) return item;
-      const accessories = item.accessories.filter((accessory) => accessory.productType !== productType);
-      if (model) accessories.push({
-        productType, model_id: model.id, item_name: model.model_name, description: model.description ?? "",
-        image_url: model.image_url ?? null, unit_price: Number(model.price ?? 0),
-      });
-      return { ...item, accessories };
-    }));
   };
 
   async function save(nextStatus: "draft" | "sent" | "approved") {
@@ -197,8 +185,8 @@ export default function QuotationNew() {
       if (qErr) throw qErr;
       const lineItems = items.filter((i) => i.item_name).map((i, idx) => ({
         quotation_id: quote.id, model_id: i.model_id, item_name: i.item_name,
-        description: i.description, features: i.features, image_url: i.image_url,
-        accessories: i.accessories,
+        description: i.description, features: i.features, image_url: i.image_url, color_name: i.color_name || null,
+        accessories: i.accessories as unknown as Json,
         quantity: i.quantity, unit_price: i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0),
         total_price: Number(i.quantity) * (i.base_unit_price + i.accessories.reduce((sum, accessory) => sum + accessory.unit_price, 0)), position: idx,
       }));
@@ -261,20 +249,22 @@ export default function QuotationNew() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {item.productType === "purifier" && item.model_id && <div className="grid gap-3 md:grid-cols-2">
-                      {(["pump", "membrane"] as const).map((accessoryType) => {
-                        const selected = item.accessories.find((accessory) => accessory.productType === accessoryType);
-                        return <div key={accessoryType}>
-                          <Label>{accessoryType === "pump" ? "Pump" : "Membrane"}</Label>
-                          <Select value={selected?.model_id ?? "__none__"} onValueChange={(modelId) => pickAccessory(item.key, accessoryType, modelId)}>
-                            <SelectTrigger><SelectValue placeholder={`Select ${accessoryType} (optional)`} /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">None</SelectItem>
-                              {modelsFor(accessoryType).map((model: any) => <SelectItem key={model.id} value={model.id}>{model.model_name} — {formatINR(Number(model.price))}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>;
-                      })}
+                    {item.model_id && (models.find((model: any) => model.id === item.model_id)?.color_variants?.length ?? 0) > 0 && <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+                      <div>
+                        <Label>Colour</Label>
+                        <Select value={item.color_name || "__standard__"} onValueChange={(colorName) => {
+                          const model = models.find((entry: any) => entry.id === item.model_id);
+                          const variant = model?.color_variants?.find((entry: any) => entry.name === colorName);
+                          update(item.key, { color_name: variant?.name ?? "", image_url: variant?.image_url ?? model?.image_url ?? null });
+                        }}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__standard__">Standard</SelectItem>
+                            {models.find((model: any) => model.id === item.model_id)?.color_variants?.map((variant: any) => <SelectItem key={variant.id ?? variant.name} value={variant.name}>{variant.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {item.image_url && <img src={item.image_url} alt={item.color_name || item.item_name} className="h-14 w-16 rounded border object-contain" />}
                     </div>}
                     <div className="grid grid-cols-2 gap-3">
                       <div><Label>Item name</Label><Input value={item.item_name} onChange={(e) => update(item.key, { item_name: e.target.value })} /></div>

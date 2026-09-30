@@ -88,6 +88,8 @@ export type Database = {
       }
       quotation_items: {
         Row: {
+          accessories: Json
+          color_name: string | null
           created_at: string
           description: string | null
           features: string[]
@@ -102,6 +104,8 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          accessories?: Json
+          color_name?: string | null
           created_at?: string
           description?: string | null
           features?: string[]
@@ -116,6 +120,8 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          accessories?: Json
+          color_name?: string | null
           created_at?: string
           description?: string | null
           features?: string[]
